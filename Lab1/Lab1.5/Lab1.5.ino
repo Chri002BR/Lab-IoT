@@ -16,7 +16,7 @@ void setup() {
 
 void loop() {
   temperatura = analogRead(TEMP_PIN);
-  R =(VCC/(float)temperatura -1.0) * R0;
+  R =(VCC/(float)temperatura - 1.0) * R0;
   temperaturaK = 1.0/( (log(R/R0)/B) + (1.0/T0));
   temperaturaC = temperaturaK - 273.15;
 
