@@ -12,22 +12,48 @@ class MyService:
 
 
 class SmartHomeSensorService(object):
-    exposed = True    
+    exposed = True
 
-    stanze = {"living_room", "kitchen", "bedroom"}
-    sensori = {"temperature", "humidity", "motion_sensor"}
+    rooms = {"living_room": {"temperature": None,
+                        "humidity": None,
+                        "motion_sensor": None},
+            "kitchen": {"temperature": None,
+                        "humidity": None,
+                        "motion_sensor": None},
+            "bedroom": {"temperature": None,
+                        "humidity": None,
+                        "motion_sensor": None},
+            }    
+
+    # stanze = {"living_room", "kitchen", "bedroom"}
+    # sensori = {"temperature", "humidity", "motion_sensor"}
+
+
+    def InitSens(self):
+        for room in self.rooms.values():
+            for sens in room.keys():
+                if(sens == "temperature" or sens == "humidity"):
+                    room[sens] = random.uniform(10, 40)
+                else:
+                    room[sens] = random.choice([True, False])
+
 
     def GET(self, *uri, **params):
+        # if(len(uri)==0):
+        #     raise cherrypy.HTTPError(404, "Bad request: Specificare il nome del sensore")
+        
+        self.InitSens()
+        
         if(len(uri)==0):
-            raise cherrypy.HTTPError(404, "Bad request: Specificare il nome del sensore")
-
+            return json.dumps(self.rooms).encode("utf-8")
+            
         nome_stanza = uri[0]
 
         if(nome_stanza not in self.stanze):
             raise cherrypy.HTTPError(404, "Bad request: Nome della stanza non presente")
-        
 
-        
+
+
         if(len(uri)==1):
             timestamp = time.time()
 
