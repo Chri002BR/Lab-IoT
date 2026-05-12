@@ -20,8 +20,11 @@ class SmartHomeSensorService(object):
             raise cherrypy.HTTPError(400, "Bad request: Link non esistente")
 
     def POST(self, *uri, **param):
-        log.append(param)
-
+        body = cherrypy.request.body.read()
+        if body:
+            data = json.loads(body)
+            self.log.append(data)
+        
 
 
 if __name__ == '__main__':
@@ -36,7 +39,8 @@ if __name__ == '__main__':
     }
     cherrypy.tree.mount(SmartHomeSensorService(), '/', conf)
 
-    cherrypy.config.update({'server.socket_host': '127.0.0.1'})
+    # cherrypy.config.update({'server.socket_host': '127.0.0.1'})
+    cherrypy.config.update({'server.socket_host': '10.251.62.1'})
     cherrypy.config.update({'server.socket_port': 8080})
     cherrypy.engine.start()
     cherrypy.engine.block()
