@@ -19,28 +19,28 @@ class SmartHomeSensorService(object):
 
         response = [
             {
-                "bn": nome_stanza + '/',
+                "bn": self.nome_stanza + '/',
                 "n": "temperature",
-                "v": random.uniform(10, 40),
+                "v": self.rooms[room]["temperature"],
                 "bt": timestamp
             },
             {
                 "n": "humidity",
-                "v": random.uniform(10, 40),
+                "v": self.rooms[room]["humidity"],
             },
             {
                 "n": "motion_sensor",
-                "v": random.choice([True, False]),
+                "v": self.rooms[room]["motion_sensor"],
             }
-        ]        
-        return json.dumps(response).encode("utf-8")
+        ]
+        return response
 
 
     def get_room_sens(self, room, sens):
         if(room not in self.rooms):
             raise cherrypy.HTTPError(400, "Bad request: Nome della stanza non presente")
 
-        if(sens not in self.rooms[room].keys):
+        if(sens not in self.rooms[room]):
             raise cherrypy.HTTPError(400, "Bad request: Nome del sensore non presente")
         
         match sens:
@@ -54,9 +54,9 @@ class SmartHomeSensorService(object):
         timestamp = time.time()
 
         response = {
-            "bn": nome_stanza + '/',
-            "n": nome_sensore,
-            "v": value,
+            "bn": room + '/',
+            "n": sens,
+            "v": self.rooms[room][sens],
             "bt": timestamp
         }
         return response
@@ -88,21 +88,21 @@ class SmartHomeSensorService(object):
         if(len(uri)==0):
             return json.dumps(self.rooms).encode("utf-8")
         elif(len(uri)==1):
-            nome_stanza = uri[0]
+            self.nome_stanza = uri[0]
 
-            if(nome_stanza not in self.stanze):
+            if(self.nome_stanza not in self.rooms):
                 raise cherrypy.HTTPError(404, "Bad request: Nome della stanza non presente")
 
-            response = self.get_room(nome_stanza)
+            response = self.get_room(self.nome_stanza)
         elif(len(uri)==2):
             nome_stanza = uri[0]
             nome_sensore = uri[1]
 
             response = self.get_room_sens(nome_stanza, nome_sensore)
 
-        
-
         return json.dumps(response).encode("utf-8")
+    
+
 
 
 if __name__ == '__main__':
