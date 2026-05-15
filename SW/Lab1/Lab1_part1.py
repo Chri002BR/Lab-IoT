@@ -4,6 +4,7 @@ import json
 import time
 from datetime import datetime, timezone
 from Es03 import SmartHomeSensorService
+from Es04 import SmartHomeLogService
 
 class MyService:
     exposed = True
@@ -24,6 +25,7 @@ if __name__ == '__main__':
         }
     }
     cherrypy.tree.mount(SmartHomeSensorService(), '/sensors/', conf)
+    cherrypy.tree.mount(SmartHomeLogService(), '/log', conf)
 
     cherrypy.config.update({'server.socket_host': '127.0.0.1'})
     cherrypy.config.update({'server.socket_port': 9090})

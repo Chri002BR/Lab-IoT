@@ -3,6 +3,7 @@ import random
 import json
 import time
 from datetime import datetime, timezone
+from Es04 import SmartHomeLogService
 
 
 class SmartHomeSensorService(object):
@@ -28,6 +29,8 @@ class SmartHomeSensorService(object):
                         "blinds": None},
             }    
     
+    logs = SmartHomeLogService()
+
     # Da usare: curl.exe -X POST http://127.0.0.1:9090/sensors -H "Content-Length: 0"
     def POST(self, *uri, **params):
         if(len(uri) == 0):
@@ -42,7 +45,7 @@ class SmartHomeSensorService(object):
                 raise cherrypy.HTTPError(400, "Bad request: Invalid JSON body")
             # fine controllo -----
 
-            if(list(body.keys())[0] != "nb"):
+            if(list(body.keys())[0] != "bn"):
                 raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
             if(list(body.keys())[1] != "n"):
                 raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
@@ -71,14 +74,14 @@ class SmartHomeSensorService(object):
                     if(value != "on" and value != "off"):
                         raise cherrypy.HTTPError(404, "Out of range")
                 case "blinds":
-                    if(0 < value or value > 100):
+                    if(value < 0 or value > 100):
                         raise cherrypy.HTTPError(404, "Out of range")
                     
 
 
             self.rooms[room][sensor] = value
             # Aggiunta del Json nel log
-
+            self.logs.AddLog(body)
 
 
         self.InitSens()
@@ -147,10 +150,24 @@ class SmartHomeSensorService(object):
                     room[sens] = random.choice([True, False])
 
 
+    def createSenML_URI(self, uri):
+        finalURI = {
+            "s": "sensors" 
+        }
+        
+        if len(uri) > 0:
+            finalURI["bn"] = uri[0]  # Stanza
+            
+        if len(uri) > 1:
+            finalURI["n"] = uri[1]   # Sensore
+
+        return finalURI
+
+
     def GET(self, *uri, **params):
         
         if(len(uri)==0):
-            return json.dumps(self.get_allSens()).encode("utf-8")
+            response = self.get_allSens()
         elif(len(uri)==1):
             self.nome_stanza = uri[0]
 
@@ -164,4 +181,5 @@ class SmartHomeSensorService(object):
 
             response = self.get_room_sens(nome_stanza, nome_sensore)
 
+        self.logs.AddLog(self.createSenML_URI(uri))
         return json.dumps(response).encode("utf-8")
