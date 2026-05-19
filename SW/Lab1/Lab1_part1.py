@@ -27,7 +27,7 @@ if __name__ == '__main__':
     cherrypy.tree.mount(SmartHomeSensorService(), '/sensors/', conf)
     cherrypy.tree.mount(SmartHomeLogService(), '/log', conf)
 
-    cherrypy.config.update({'server.socket_host': '127.0.0.1'})
+    cherrypy.config.update({'server.socket_host': '0.0.0.0'})
     cherrypy.config.update({'server.socket_port': 9090})
     cherrypy.engine.start()
     cherrypy.engine.block()

@@ -150,6 +150,7 @@ class SmartHomeSensorService(object):
                     room[sens] = random.choice([True, False])
 
 
+    # Da aggiungere il tipo di richiesta (GET, POST, ...) non richiesto ma così non si capisce nulla
     def createSenML_URI(self, uri):
         finalURI = {
             "s": "sensors" 
