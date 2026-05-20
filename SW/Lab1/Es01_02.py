@@ -6,27 +6,27 @@ from datetime import datetime, timezone
 from Es04 import SmartHomeLogService
 
 
-class SmartHomeActuatorService(object):
+class SmartHomeSensorService(object):
     exposed = True
 
-    rooms_act = {"living_room": {
-                        "thermostat": None,
-                        "lights": None,
-                        "blinds": None},
+    rooms_sens = {"living_room": {
+                        "temperature": None,
+                        "humidity": None,
+                        "motion_sensor": None,},
             "kitchen": {
-                        "thermostat": None,
-                        "lights": None,
-                        "blinds": None},
+                        "temperature": None,
+                        "humidity": None,
+                        "motion_sensor": None,},
             "bedroom": {
-                        "thermostat": None,
-                        "lights": None,
-                        "blinds": None},
+                        "temperature": None,
+                        "humidity": None,
+                        "motion_sensor": None},
             }
     
     units = {
-        "thermostat": "Cel",
-        "lights": "bool",
-        "blinds": "pct"
+        "temperature": "Cel",
+        "humidity": "%RH",
+        "motion_sensor": "bool"
     }
     
     logs = SmartHomeLogService()
@@ -55,13 +55,13 @@ class SmartHomeActuatorService(object):
 
 
             room = list(body.values())[0]
-            if room not in self.rooms_act:
+            if room not in self.rooms_sens:
                 raise cherrypy.HTTPError(404, "Room not found")
 
             sensor = list(body.values())[1]    # prima chiave
             value = list(body.values())[2]  # primo valore
             
-            if sensor not in self.room_act[room]:
+            if sensor not in self.rooms_sens[room]:
                 raise cherrypy.HTTPError(404, "Sensor not found in this room")
                 
 
@@ -79,7 +79,7 @@ class SmartHomeActuatorService(object):
                     
 
 
-            self.room_act[room][sensor] = value
+            self.rooms_sens[room][sensor] = value
             # Aggiunta del Json nel log
             self.logs.AddLog(body)
 
@@ -92,12 +92,14 @@ class SmartHomeActuatorService(object):
         }).encode("utf-8")
 
     def InitSens(self):
-        for room in self.room_act.values():
+        for room in self.rooms_sens.values():
             for sens in room.keys():
-                if(sens == "temperature" or sens == "humidity"):
-                    room[sens] = random.uniform(10, 40)
+                if(sens == "temperature"):
+                    room[sens] = round(random.uniform(10, 30), 2)
                 elif(sens == "motion_sensor"):
                     room[sens] = random.choice([True, False])
+                elif(sens == "humidity"):
+                    room[sens] = round(random.uniform(10, 90), 2)
 
 
     # Da aggiungere il tipo di richiesta (GET, POST, ...) non richiesto ma così non si capisce nulla
@@ -140,30 +142,28 @@ class SmartHomeActuatorService(object):
         self.logs.AddLog(self.createSenML_URI(uri))
         return json.dumps(response).encode("utf-8")
     
-    ## Esercizio 2
     ## Funzione per ottenere tutti i sensori di tutte le stanze, utile per il GET senza parametri    
     def get_allSens(self):
         response = []
-        for room in self.room_act:
+        for room in self.rooms_sens:
             response.append(self.get_room(room))
         
         return response
     
-    ## Esercizio 2
     ## Funzione per ottenere tutti i sensori di una stanza, utile per il GET con un parametro (nome stanza)
     def get_room(self, room):
-        if(room not in self.room_act):
-            raise cherrypy.HTTPError(404, json.dumps({"error": "room not found", "available_rooms": list(self.room_act.keys())}))
+        if(room not in self.rooms_sens):
+            raise cherrypy.HTTPError(404, json.dumps({"error": "room not found", "available_rooms": list(self.rooms_sens.keys())}))
         
         timestamp = time.time()   
         elem = []
         
         # Creazione del pacchetto SenML con tutti i sensori della stanza
-        for sens in self.room_act[room]:
+        for sens in self.rooms_sens[room]:
             elem.append(
                 {
                     "n": sens,
-                    "v": self.room_act[room][sens],
+                    "v": self.rooms_sens[room][sens],
                     "u": self.units.get(sens, None)
                 }
             )
@@ -176,12 +176,13 @@ class SmartHomeActuatorService(object):
 
         return response
     
+    # Funzione per ottenere il valore di un sensore specifico in una stanza specifica, utile per il GET con due parametri (nome stanza e nome sensore)
     def get_room_sens(self, room, sens):
-        if(room not in self.room_act):
-            raise cherrypy.HTTPError(404, json.dumps({"error": "room not found", "available_rooms": list(self.room_act.keys())}))
+        if(room not in self.rooms_sens):
+            raise cherrypy.HTTPError(404, json.dumps({"error": "room not found", "available_rooms": list(self.rooms_sens.keys())}))
 
-        if(sens not in self.room_act[room]):
-            raise cherrypy.HTTPError(400, json.dumps({"error": "unknown sensor type", "valid_types": list(self.room_act[room].keys())}))
+        if(sens not in self.rooms_sens[room]):
+            raise cherrypy.HTTPError(400, json.dumps({"error": "unknown sensor type", "valid_types": list(self.rooms_sens[room].keys())}))
 
         timestamp = time.time()
 
@@ -191,10 +192,9 @@ class SmartHomeActuatorService(object):
             "e": [
                 {
                     "n": sens,
-                    "v": self.room_act[room][sens],
+                    "v": self.rooms_sens[room][sens],
                     "u": self.units.get(sens, None)
                 }
             ]
-
         }
         return response

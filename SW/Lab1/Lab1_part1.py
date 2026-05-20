@@ -3,18 +3,14 @@ import random
 import json
 import time
 from datetime import datetime, timezone
-from Es03 import SmartHomeSensorService
+from Es01_02 import SmartHomeSensorService
 from Es04 import SmartHomeLogService
 
-class MyService:
-    exposed = True
-
-    def GET(self):
-        return b'{"message": "Server attivo (ciao)"}'
-
-
-
 if __name__ == '__main__':
+    
+    # Simulazione inizializzazione sensori
+    SmartHomeSensorService().InitSens()
+    
     conf = {
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
