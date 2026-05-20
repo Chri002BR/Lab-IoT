@@ -2,7 +2,6 @@ import cherrypy
 import random
 import json
 import time
-from datetime import datetime, timezone
 from Es04 import SmartHomeLogService
 
 
@@ -30,93 +29,12 @@ class SmartHomeSensorService(object):
     }
     
     logs = SmartHomeLogService()
-
-    # Da usare: curl.exe -X POST http://127.0.0.1:9090/sensors -H "Content-Length: 0"
-    def POST(self, *uri, **params):
-        if(len(uri) == 0):
-            raw = cherrypy.request.body.read()
-            # Controllo correttezza del pacchetto ----
-            if not raw:
-                raise cherrypy.HTTPError(400, "Bad request: Empty body")
-            
-            try:
-                body = json.loads(raw)
-            except json.JSONDecodeError:
-                raise cherrypy.HTTPError(400, "Bad request: Invalid JSON body")
-            # fine controllo -----
-
-            if(list(body.keys())[0] != "bn"):
-                raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
-            if(list(body.keys())[1] != "n"):
-                raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
-            if(list(body.keys())[2] != "v"):
-                raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
-
-
-
-            room = list(body.values())[0]
-            if room not in self.rooms_sens:
-                raise cherrypy.HTTPError(404, "Room not found")
-
-            sensor = list(body.values())[1]    # prima chiave
-            value = list(body.values())[2]  # primo valore
-            
-            if sensor not in self.rooms_sens[room]:
-                raise cherrypy.HTTPError(404, "Sensor not found in this room")
-                
-
-            # Controllo correttezza value (se in range)
-            match sensor:
-                case "thermostat":
-                    if(value < 10 or value > 30):
-                        raise cherrypy.HTTPError(404, "Out of range")
-                case "lights":
-                    if(value != "on" and value != "off"):
-                        raise cherrypy.HTTPError(404, "Out of range")
-                case "blinds":
-                    if(value < 0 or value > 100):
-                        raise cherrypy.HTTPError(404, "Out of range")
-                    
-
-
-            self.rooms_sens[room][sensor] = value
-            # Aggiunta del Json nel log
-            self.logs.AddLog(body)
-
-
+    
+    ## Funzione per inizializzare la classe, utile per la simulazione, in questo modo i sensori hanno già dei valori random al primo avvio del server
+    def __init__(self):
         self.InitSens()
-
-        return json.dumps({
-            "status": "ok",
-            "message": "Tutti i sensori inizializzati",
-        }).encode("utf-8")
-
-    def InitSens(self):
-        for room in self.rooms_sens.values():
-            for sens in room.keys():
-                if(sens == "temperature"):
-                    room[sens] = round(random.uniform(10, 30), 2)
-                elif(sens == "motion_sensor"):
-                    room[sens] = random.choice([True, False])
-                elif(sens == "humidity"):
-                    room[sens] = round(random.uniform(10, 90), 2)
-
-
-    # Da aggiungere il tipo di richiesta (GET, POST, ...) non richiesto ma così non si capisce nulla
-    def createSenML_URI(self, uri):
-        finalURI = {
-            "s": "sensors" 
-        }
-        
-        if len(uri) > 0:
-            finalURI["bn"] = uri[0]  # Stanza
-            
-        if len(uri) > 1:
-            finalURI["n"] = uri[1]   # Sensore
-
-        return finalURI
-
-
+    
+    ## Funzione che gestisce le richieste GET, in base alla presenza o meno di parametri e alla loro tipologia (URI o query parameters) decide quale funzione chiamare per ottenere i dati richiesti
     def GET(self, *uri, **params):
         ## ESERCIZIO 1
         if(len(uri) == 0 and len(params) != 0):
@@ -141,7 +59,18 @@ class SmartHomeSensorService(object):
 
         self.logs.AddLog(self.createSenML_URI(uri))
         return json.dumps(response).encode("utf-8")
-    
+
+    ## Funzione per inizializzare i sensori con valori random, utile per la simulazione
+    def InitSens(self):
+        for room in self.rooms_sens.values():
+            for sens in room.keys():
+                if(sens == "temperature"):
+                    room[sens] = round(random.uniform(10, 30), 2)
+                elif(sens == "motion_sensor"):
+                    room[sens] = random.choice([True, False])
+                elif(sens == "humidity"):
+                    room[sens] = round(random.uniform(10, 90), 2)
+   
     ## Funzione per ottenere tutti i sensori di tutte le stanze, utile per il GET senza parametri    
     def get_allSens(self):
         response = []
@@ -198,3 +127,18 @@ class SmartHomeSensorService(object):
             ]
         }
         return response
+    
+    # DA CONTROLLARE
+    # Da aggiungere il tipo di richiesta (GET, POST, ...) non richiesto ma così non si capisce nulla
+    def createSenML_URI(self, uri):
+        finalURI = {
+            "s": "sensors" 
+        }
+        
+        if len(uri) > 0:
+            finalURI["bn"] = uri[0]  # Stanza
+            
+        if len(uri) > 1:
+            finalURI["n"] = uri[1]   # Sensore
+
+        return finalURI
