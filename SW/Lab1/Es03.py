@@ -30,11 +30,62 @@ class SmartHomeActuatorService(object):
     }
     
     logs = SmartHomeLogService()
+    
+    ## Funzione per inizializzare la classe, utile per la simulazione, in questo modo i sensori hanno già dei valori random al primo avvio del server
+    def __init__(self):
+        self.InitAct()
 
+    ## Funzione che gestisce le richieste GET, in base alla presenza o meno di parametri e alla loro tipologia (URI o query parameters) decide quale funzione chiamare per ottenere i dati richiesti
+    def GET(self, *uri, **params):
+        if(len(uri) == 0 and len(params) != 0):
+            keys = list(params.keys())
+            if (len(keys) == 1 and keys[0] == "room"):
+                response = self.get_room(params["room"])
+            elif (len(keys) == 2 and keys[0] == "room" and keys[1] == "act"):
+                response = self.get_room_act(params["room"], params["act"])
+            else:
+                raise cherrypy.HTTPError(400, "Bad request: Invalid query parameters. Valid parameters are 'room' and 'act'. Example: ?room=living_room&act=thermostat")
+
+        elif(len(params) == 0):
+            if(len(params) == 0 and len(uri)==0):
+                response = self.get_allAct()
+            elif(len(uri)==1):
+                response = self.get_room(uri[0])
+            elif(len(uri)==2):
+                response = self.get_room_act(uri[0], uri[1])
+            else:
+                raise cherrypy.HTTPError(400, "Bad request: Invalid URI format. Valid formats are /actuators/, /actuators/{room}, /actuators/{room}/{act}. Example: /actuators/living_room/thermostat")
+
+        self.logs.AddLog(self.createSenML_URI(uri))
+        return json.dumps(response).encode("utf-8")
+
+    # DA CONTROLLARE
     # Da usare: curl.exe -X POST http://127.0.0.1:9090/sensors -H "Content-Length: 0"
+    
+    #USARE PUT, NON POST
+    
+    #STRUTTURA DEL BODY DA INVIARE PER AGGIORNARE UN ATTUATORE:
+    
+    #{
+    #    "bn": "kitchen/",
+    #    "e": [
+    #        {
+    #        "n": "lights",
+    #        "v": True,
+    #        "u": "bool"
+    #        }
+    #    ]
+    #}
     def POST(self, *uri, **params):
+        
+        # Controllo che il Content-Type sia application/json, altrimenti ritorna un errore 415 Unsupported Media Type
+        if cherrypy.request.headers.get("Content-Type", "") != "application/json":
+            raise cherrypy.HTTPError(415, "Bad request: Content-Type must be application/json")
+        
+        # PERCHE' len(uri) == 0 ?? NON DOVREBBE ESSERE SEMPRE 0 PERCHE' L'URI DEVE CONTENERE LA STANZA E IL SENSORE DA AGGIORNARE ?
         if(len(uri) == 0):
             raw = cherrypy.request.body.read()
+            
             # Controllo correttezza del pacchetto ----
             if not raw:
                 raise cherrypy.HTTPError(400, "Bad request: Empty body")
@@ -91,6 +142,7 @@ class SmartHomeActuatorService(object):
             "message": "Tutti i sensori inizializzati",
         }).encode("utf-8")
 
+    ## Funzione per inizializzare gli attuatori con valori random, utile per la simulazione
     def InitAct(self):
         for room in self.rooms_act.values():
             for sens in room.keys():
@@ -99,7 +151,7 @@ class SmartHomeActuatorService(object):
                 elif(sens == "motion_sensor"):
                     room[sens] = random.choice([True, False])
 
-
+    # DA CONTROLLARE
     # Da aggiungere il tipo di richiesta (GET, POST, ...) non richiesto ma così non si capisce nulla
     def createSenML_URI(self, uri):
         finalURI = {
@@ -113,32 +165,6 @@ class SmartHomeActuatorService(object):
             finalURI["n"] = uri[1]   # Sensore
 
         return finalURI
-
-
-    def GET(self, *uri, **params):
-        ## ESERCIZIO 1
-        if(len(uri) == 0 and len(params) != 0):
-            keys = list(params.keys())
-            if (len(keys) == 1 and keys[0] == "room"):
-                response = self.get_room(params["room"])
-            elif (len(keys) == 2 and keys[0] == "room" and keys[1] == "act"):
-                response = self.get_room_act(params["room"], params["act"])
-            else:
-                raise cherrypy.HTTPError(400, "Bad request: Invalid query parameters. Valid parameters are 'room' and 'act'. Example: ?room=living_room&act=thermostat")
-
-        ## ESERCIZIO 2
-        elif(len(params) == 0):
-            if(len(params) == 0 and len(uri)==0):
-                response = self.get_allAct()
-            elif(len(uri)==1):
-                response = self.get_room(uri[0])
-            elif(len(uri)==2):
-                response = self.get_room_act(uri[0], uri[1])
-            else:
-                raise cherrypy.HTTPError(400, "Bad request: Invalid URI format. Valid formats are /actuators/, /actuators/{room}, /actuators/{room}/{act}. Example: /actuators/living_room/thermostat")
-
-        self.logs.AddLog(self.createSenML_URI(uri))
-        return json.dumps(response).encode("utf-8")
     
     ## Funzione per ottenere tutti i sensori di tutte le stanze, utile per il GET senza parametri    
     def get_allAct(self):

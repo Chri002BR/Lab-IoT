@@ -9,9 +9,6 @@ from Es03 import SmartHomeActuatorService
 
 if __name__ == '__main__':
     
-    # Simulazione inizializzazione sensori
-    SmartHomeSensorService().InitSens()
-    
     conf = {
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
