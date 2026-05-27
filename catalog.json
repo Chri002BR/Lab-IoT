@@ -3,6 +3,25 @@
     "ip": "iot.eclipse.org",
     "port": 1883
   },
+<<<<<<< HEAD
+  "devices": [
+    {
+      "id": "sensore-cucina",
+      "description": "Sensore DHT22 per temperatura e umidita",
+      "resources": [
+        "temperature",
+        "humidity"
+      ],
+      "mqtt": {
+        "ip": "broker.hivemq.com",
+        "port": 1883,
+        "topic": "tiot/group14/cucina/dati"
+      },
+      "insert_timestamp": 1779867319.042882
+    }
+  ],
+=======
   "devices": [],
+>>>>>>> e55d479bae7d510af9fd83807809dbbd6f894f8c
   "services": []
 }
