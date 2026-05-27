@@ -3,18 +3,13 @@ import random
 import json
 import time
 from datetime import datetime, timezone
-from Es03 import SmartHomeSensorService
+from Es01_02 import SmartHomeSensorService
 from Es04 import SmartHomeLogService
-
-class MyService:
-    exposed = True
-
-    def GET(self):
-        return b'{"message": "Server attivo (ciao)"}'
-
-
+from Es03 import SmartHomeActuatorService
+from Es05 import Catalog
 
 if __name__ == '__main__':
+    
     conf = {
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
@@ -25,7 +20,9 @@ if __name__ == '__main__':
         }
     }
     cherrypy.tree.mount(SmartHomeSensorService(), '/sensors/', conf)
+    cherrypy.tree.mount(SmartHomeActuatorService(), '/actuators/', conf)
     cherrypy.tree.mount(SmartHomeLogService(), '/log', conf)
+    cherrypy.tree.mount(Catalog(), "/catalog", conf)
 
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
     cherrypy.config.update({'server.socket_port': 9090})
