@@ -56,16 +56,9 @@ class SmartHomeActuatorService(object):
             else:
                 raise cherrypy.HTTPError(400, "Bad request: Invalid URI format. Valid formats are /actuators/, /actuators/{room}, /actuators/{room}/{act}. Example: /actuators/living_room/thermostat")
 
-        self.logs.AddLog(self.createSenML_URI(uri))
         return json.dumps(response).encode("utf-8")
-
-    # DA CONTROLLARE
-    # Da usare: curl.exe -X POST http://127.0.0.1:9090/sensors -H "Content-Length: 0"
     
-    #USARE PUT, NON POST
-    
-    #STRUTTURA DEL BODY DA INVIARE PER AGGIORNARE UN ATTUATORE:
-    
+    #STRUTTURA DEL BODY DA INVIARE PER AGGIORNARE UN ATTUATORE: 
     #{
     #    "bn": "kitchen/",
     #    "e": [
@@ -76,17 +69,18 @@ class SmartHomeActuatorService(object):
     #        }
     #    ]
     #}
-    def POST(self, *uri, **params):
+    
+    ## Funzione che gestisce le richieste PUT, si aspetta un body in formato JSON con i campi bn (base name), e (array di elementi) dove ogni elemento deve contenere i campi n (name), v (value) e u (unit). In base al contenuto del body aggiorna il valore dell'attuatore specificato e aggiunge un log della modifica effettuata
+    def PUT(self, *uri, **params):
         
         # Controllo che il Content-Type sia application/json, altrimenti ritorna un errore 415 Unsupported Media Type
         if cherrypy.request.headers.get("Content-Type", "") != "application/json":
             raise cherrypy.HTTPError(415, "Bad request: Content-Type must be application/json")
         
-        # PERCHE' len(uri) == 0 ?? NON DOVREBBE ESSERE SEMPRE 0 PERCHE' L'URI DEVE CONTENERE LA STANZA E IL SENSORE DA AGGIORNARE ?
         if(len(uri) == 0):
             raw = cherrypy.request.body.read()
             
-            # Controllo correttezza del pacchetto ----
+            # Controllo correttezza del pacchetto
             if not raw:
                 raise cherrypy.HTTPError(400, "Bad request: Empty body")
             
@@ -94,53 +88,54 @@ class SmartHomeActuatorService(object):
                 body = json.loads(raw)
             except json.JSONDecodeError:
                 raise cherrypy.HTTPError(400, "Bad request: Invalid JSON body")
-            # fine controllo -----
-
-            if(list(body.keys())[0] != "bn"):
+            
+            #controllo che il pacchetto contenga i campi necessari (bn, e) e che e sia una lista con almeno un elemento che contenga i campi n, v, u
+            
+            if "bn" not in body or "e" not in body:
                 raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
-            if(list(body.keys())[1] != "n"):
+            
+            if not isinstance(body["e"], list):
                 raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
-            if(list(body.keys())[2] != "v"):
+            
+            if len(body["e"]) != 1:
                 raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
-
-
-
-            room = list(body.values())[0]
+            
+            if len(body["e"][0]) != 3:
+                raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
+            
+            if "n" not in body["e"][0] or "v" not in body["e"][0] or "u" not in body["e"][0]:
+                raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
+            
+            room = body["bn"].rstrip('/')  # Rimuove eventuale slash finale
+            sensor = body["e"][0]["n"]
+            value = body["e"][0]["v"]
+            
+            # Controllo che la stanza e il sensore esistano, altrimenti ritorna un errore 404 Not Found
+            # Controllo che il valore sia corretto (es. se è un termostato deve essere compreso tra 10 e 30, se sono le luci deve essere on o off, se sono le tapparelle deve essere compreso tra 0 e 100), altrimenti ritorna un errore 400 Bad Request
+             
             if room not in self.rooms_act:
                 raise cherrypy.HTTPError(404, "Room not found")
-
-            sensor = list(body.values())[1]    # prima chiave
-            value = list(body.values())[2]  # primo valore
             
             if sensor not in self.rooms_act[room]:
                 raise cherrypy.HTTPError(404, "Sensor not found in this room")
                 
-
             # Controllo correttezza value (se in range)
-            match sensor:
-                case "thermostat":
-                    if(value < 10 or value > 30):
-                        raise cherrypy.HTTPError(404, "Out of range")
-                case "lights":
-                    if(value != "on" and value != "off"):
-                        raise cherrypy.HTTPError(404, "Out of range")
-                case "blinds":
-                    if(value < 0 or value > 100):
-                        raise cherrypy.HTTPError(404, "Out of range")
-                    
-
+             
+            if sensor == "thermostat":
+                if value < 10 or value > 30:
+                    raise cherrypy.HTTPError(400, "Bad request: Value out of range for thermostat (10-30)")
+            elif sensor == "lights":
+                if value != True and value != False:
+                    raise cherrypy.HTTPError(400, "Bad request: Value for lights must be True or False")
+            elif sensor == "blinds":
+                if value < 0 or value > 100:
+                    raise cherrypy.HTTPError(400, "Bad request: Value out of range for blinds (0-100)")
 
             self.rooms_act[room][sensor] = value
             # Aggiunta del Json nel log
-            self.logs.AddLog(body)
+            self.send_log(room, sensor, value)
 
-
-        self.InitAct()
-
-        return json.dumps({
-            "status": "ok",
-            "message": "Tutti i sensori inizializzati",
-        }).encode("utf-8")
+            return json.dumps(self.get_room_act(room, sensor)).encode("utf-8")
 
     ## Funzione per inizializzare gli attuatori con valori random, utile per la simulazione
     def InitAct(self):
@@ -150,21 +145,25 @@ class SmartHomeActuatorService(object):
                     room[sens] = random.uniform(10, 40)
                 elif(sens == "motion_sensor"):
                     room[sens] = random.choice([True, False])
-
-    # DA CONTROLLARE
-    # Da aggiungere il tipo di richiesta (GET, POST, ...) non richiesto ma così non si capisce nulla
-    def createSenML_URI(self, uri):
-        finalURI = {
-            "s": "sensors" 
+    
+    
+    def send_log(self, room, sensor, value):
+        timestamp = time.time()
+        response = {
+            "bn": room + '/' + sensor + '/',
+            "bt": timestamp,
+            "e": [
+                {
+                    "n": "status",
+                    "v": value,
+                    "u": self.units.get(sensor, None)
+                }
+            ]
         }
         
-        if len(uri) > 0:
-            finalURI["bn"] = uri[0]  # Stanza
-            
-        if len(uri) > 1:
-            finalURI["n"] = uri[1]   # Sensore
-
-        return finalURI
+        #TODO: da sostituire con invio al server di log
+        self.logs.AddLog(response)
+        
     
     ## Funzione per ottenere tutti i sensori di tutte le stanze, utile per il GET senza parametri    
     def get_allAct(self):
@@ -220,6 +219,5 @@ class SmartHomeActuatorService(object):
                     "u": self.units.get(sens, None)
                 }
             ]
-
         }
         return response

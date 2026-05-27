@@ -24,10 +24,49 @@ class SmartHomeLogService(object):
     
 
     def AddLog(self, value):
-        timestamp = time.time()
-        self.logs.append({"ID": SmartHomeLogService.id ,"EPOCH": timestamp, "VAL": value})
-        SmartHomeLogService.id += 1
+        self.logs.append(value)
 
+    ## Funzione per ricevere un log da un sensore o attuatore e aggiungerlo alla lista dei log
+    def POST(self, *uri, **params):
+        if(len(uri) == 0):
+            raw = cherrypy.request.body.read()
+            
+            # Controllo correttezza del pacchetto
+            if not raw:
+                raise cherrypy.HTTPError(400, "Bad request: Empty body")
+            
+            try:
+                body = json.loads(raw)
+            except json.JSONDecodeError:
+                raise cherrypy.HTTPError(400, "Bad request: Invalid JSON body")
+            
+            #controllo che il pacchetto contenga i campi necessari (bn, e) e che e sia una lista con almeno un elemento che contenga i campi n, v, u
+            
+            if "bn" not in body or "e" not in body:
+                raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
+            
+            if not isinstance(body["e"], list):
+                raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
+            
+            if len(body["e"]) != 1:
+                raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
+            
+            if len(body["e"][0]) != 3:
+                raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
+            
+            if "n" not in body["e"][0] or "v" not in body["e"][0] or "u" not in body["e"][0]:
+                raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
+            
+            if "bt" not in body:
+                timestamp = time.time()
+                body = {"bt": timestamp, **body}
+            
+            body = {"id": SmartHomeLogService.id, **body}
+            SmartHomeLogService.id += 1
+            
+            self.AddLog(body)
+            return json.dumps({"status": "success", "log_id": SmartHomeLogService.id - 1}).encode("utf-8")
+    
     def GET(self, *uri, **params):
         response = []
         if(len(uri) == 0):
@@ -40,7 +79,7 @@ class SmartHomeLogService(object):
                     for log in self.logs:
                         if( ("bn" in log["VAL"]) and log["VAL"]["bn"] == room and log["EPOCH"] >= since):
                             response.append(log)
-                    self.AddLog(self.createSenML_URI(uri))
+                    #self.AddLog(self.createSenML_URI(uri))
                     return json.dumps(response).encode("utf-8")
 
 
