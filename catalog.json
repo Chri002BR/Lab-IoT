@@ -3,6 +3,7 @@
     "ip": "iot.eclipse.org",
     "port": 1883
   },
+<<<<<<< HEAD
   "devices": [
     {
       "id": "sensore-cucina",
@@ -19,5 +20,8 @@
       "insert_timestamp": 1779867319.042882
     }
   ],
+=======
+  "devices": [],
+>>>>>>> e55d479bae7d510af9fd83807809dbbd6f894f8c
   "services": []
 }
