@@ -1,6 +1,7 @@
 import paho.mqtt.client as mqtt
 import threading, time, json, cherrypy, os
 
+import Es07
 
 CATALOG_FILE = "catalog.json"
 CLEANUP_INTERVAL = 60    # seconds between each cleanup pass
@@ -34,6 +35,20 @@ class Catalog(object):
         # Background cleanup thread (daemon=True so it dies with the process)
         threading.Thread(target=self._cleanup_loop, daemon=True).start()
         print("[Catalog] Started. Listening on http://localhost:8080/catalog")
+
+        # per far partire il bridge con questa classe
+        broker_info = self._data.get("broker", {"ip": "iot.eclipse.org", "port": 1883})
+        broker_host = "broker.hivemq.com"
+        broker_port = 1883
+
+        # Istanziamo il Bridge passando 'self' (questa istanza di Catalog)
+        self.mqtt_bridge = Es07.MQTTCatalogBridge(
+            catalog=self, 
+            broker_host=broker_host, 
+            broker_port=broker_port
+        )
+        # Avviamo il bridge (che farà partire internamente il secondo Thread tramite loop_start())
+        self.mqtt_bridge.start()
 
     # ── Persistence helpers ──────────────────────────────────────────────────
  
