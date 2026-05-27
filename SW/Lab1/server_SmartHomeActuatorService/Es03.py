@@ -3,11 +3,13 @@ import random
 import json
 import time
 from datetime import datetime, timezone
-from Es04 import SmartHomeLogService
 
+import requests
 
 class SmartHomeActuatorService(object):
     exposed = True
+    
+    url_log = "http://127.0.0.1:9092/log/"
 
     rooms_act = {"living_room": {
                         "thermostat": None,
@@ -28,8 +30,6 @@ class SmartHomeActuatorService(object):
         "lights": "bool",
         "blinds": "pct"
     }
-    
-    logs = SmartHomeLogService()
     
     ## Funzione per inizializzare la classe, utile per la simulazione, in questo modo i sensori hanno già dei valori random al primo avvio del server
     def __init__(self):
@@ -146,10 +146,10 @@ class SmartHomeActuatorService(object):
                 elif(sens == "motion_sensor"):
                     room[sens] = random.choice([True, False])
     
-    
+    ## funzione per inviare un log al server di log, in caso di fallimento dell'invio ritorna un errore 500 Internal Server Error; il log contiene la stanza, il sensore, il nuovo valore e l'unità di misura
     def send_log(self, room, sensor, value):
         timestamp = time.time()
-        response = {
+        payload = {
             "bn": room + '/' + sensor + '/',
             "bt": timestamp,
             "e": [
@@ -160,11 +160,16 @@ class SmartHomeActuatorService(object):
                 }
             ]
         }
-        
-        #TODO: da sostituire con invio al server di log
-        self.logs.AddLog(response)
-        
-    
+
+        # Invia il log al server di log via POST; se fallisce, lo salva localmente
+        try:
+            resp = requests.post(self.url_log, json=payload, headers={"Content-Type": "application/json"}, timeout=5)
+            if resp.status_code not in (200, 201):
+                raise cherrypy.HTTPError(404, json.dumps({"error": "Failed to send log to log server, status code: " + str(resp.status_code)}))
+
+        except Exception:
+            raise cherrypy.HTTPError(500, json.dumps({"error": "Failed to send log"}))
+
     ## Funzione per ottenere tutti i sensori di tutte le stanze, utile per il GET senza parametri    
     def get_allAct(self):
         response = []

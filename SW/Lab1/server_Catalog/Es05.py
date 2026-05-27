@@ -1,7 +1,7 @@
 import paho.mqtt.client as mqtt
 import threading, time, json, cherrypy, os
 
-import Es07
+import SW.Lab1.server_Catalog.Es07 as Es07
 
 CATALOG_FILE = "catalog.json"
 CLEANUP_INTERVAL = 60    # seconds between each cleanup pass
