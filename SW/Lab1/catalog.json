@@ -3,6 +3,18 @@
     "ip": "iot.eclipse.org",
     "port": 1883
   },
-  "devices": [],
+  "devices": [
+    {
+      "id": "device1",
+      "description": "IOT device",
+      "mqtt_info": {
+        "ip": "iot.eclipse.org",
+        "port": 1883,
+        "topic": "tiot/group14/device/device1/data"
+      },
+      "resources": [],
+      "insert_timestamp": 1780083837.9759023
+    }
+  ],
   "services": []
 }
