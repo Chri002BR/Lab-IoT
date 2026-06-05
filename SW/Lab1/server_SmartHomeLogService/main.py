@@ -4,6 +4,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
 
 import cherrypy
 from Es04 import SmartHomeLogService
+from Es12 import MQTTSubscriber
+
+GROUP_ID = "group14"
 
 if __name__ == '__main__':
     
@@ -16,8 +19,33 @@ if __name__ == '__main__':
             'application/json')]
         }
     }
+
+    log_service_instance = SmartHomeLogService()
+
     cherrypy.tree.mount(SmartHomeLogService(), '/log', conf)
 
+    MQTT_BROKER = "broker.hivemq.com" 
+    MQTT_PORT = 1883
+    
+    # Sfruttiamo i caratteri jolly (wildcard '+') per ascoltare con un unico topic sia i sensori che i comandi.
+    # Es. "smarthome/+/sensor" e "smarthome/+/actuator". Usando '#' ascoltiamo tutto ciò che sta sotto quel livello.
+    MQTT_TOPIC = f"tiot/{GROUP_ID}/smarthome/#"  # Personalizza la radice (es. metti il tuo numero di gruppo al posto di 7)
+
+    # 3. Istanziamo il Subscriber passando il riferimento a 'log_service_instance'
+    mqtt_sub = MQTTSubscriber(
+        clientID="SmartHomeLogService_Sub_2026", 
+        broker=MQTT_BROKER, 
+        port=MQTT_PORT, 
+        topic=MQTT_TOPIC, 
+        log_service=log_service_instance
+    )
+
+    # 4. Colleghiamo il Subscriber al ciclo di vita di CherryPy
+    # Quando CherryPy parte, avvia l'MQTT; quando si stoppa, lo spegne in sicurezza.
+    cherrypy.engine.subscribe('start', mqtt_sub.start)
+    cherrypy.engine.subscribe('stop', mqtt_sub.stop)
+
+    # 5. Avvio del Server
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
     cherrypy.config.update({'server.socket_port': 9092})
     cherrypy.engine.start()
