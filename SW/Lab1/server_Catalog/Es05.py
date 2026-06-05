@@ -3,7 +3,8 @@ import threading, time, json, cherrypy, os
 
 import SW.Lab1.server_Catalog.Es07 as Es07
 
-CATALOG_FILE = "catalog.json"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CATALOG_FILE = os.path.join(SCRIPT_DIR, "catalog.json")
 CLEANUP_INTERVAL = 60    # seconds between each cleanup pass
 STALE_THRESHOLD  = 120   # seconds before a registration is considered stale
 
