@@ -5,8 +5,8 @@ import time
 
 class SmartHomeLogService(object):
     exposed = True
+    
     id=0
-
     logs = []
 
     def createSenML_URI(self, uri, params=None):
@@ -21,7 +21,6 @@ class SmartHomeLogService(object):
             finalURI["params"] = params
 
         return finalURI
-    
 
     def AddLog(self, value):
         self.logs.append(value)
@@ -30,6 +29,7 @@ class SmartHomeLogService(object):
     def POST(self, *uri, **params):
         if(len(uri) == 0):
             raw = cherrypy.request.body.read()
+            timestamp = time.time()
             
             # Controllo correttezza del pacchetto
             if not raw:
@@ -60,6 +60,8 @@ class SmartHomeLogService(object):
             if "bt" not in body:
                 timestamp = time.time()
                 body = {"bt": timestamp, **body}
+            else:
+                body["bt"] = timestamp
             
             body = {"id": SmartHomeLogService.id, **body}
             SmartHomeLogService.id += 1
@@ -67,8 +69,31 @@ class SmartHomeLogService(object):
             self.AddLog(body)
             return json.dumps({"status": "success", "log_id": SmartHomeLogService.id - 1}).encode("utf-8")
     
-    def GET(self, *uri, **params):
-        response = []
+    ## Funzione per ottenere tutti i log, con la possibilità di filtrare per stanza e per timestamp
+    def GET(self, *uri, **params):          
+        # GET /log
+        if(len(uri) == 0 and len(params) == 0):
+            #self.AddLog(self.createSenML_URI(uri))
+            return json.dumps(self.logs).encode("utf-8")
+        
+        # GET /log/{room}
+        if (len(uri) == 1 and len(params) == 0):
+            return json.dumps(self.get_logs_by_room(self.logs, uri[0])).encode("utf-8")
+        
+        # GET /log?room={room}&since={timestamp}
+        response = self.logs
+        if (len(uri) == 0 and len(params) <= 2):
+            for key in params.keys():
+                if key not in ["room", "since"]:
+                    raise cherrypy.HTTPError(400, "Bad request: Invalid query parameters. Valid parameters are 'room' and 'since'. Example: /log?room=bedroom&since=1234567890")
+            if "room" in params:
+                response = self.get_logs_by_room(response, params.get("room"))
+            if "since" in params:
+                response = self.get_logs_by_time(response, float(params.get("since")))
+            return json.dumps(response).encode("utf-8")
+        
+        raise cherrypy.HTTPError(400, "Bad request: Invalid URI format. Valid formats are /log, /log/{room}, /log?room={room}&since={timestamp}. Example: /log?room=bedroom&since=1234567890")
+        
         if(len(uri) == 0):
 
             # Da sistemare (codice inguardabile)
@@ -95,10 +120,10 @@ class SmartHomeLogService(object):
                         if(log["EPOCH"] >= since ):
                             response.append(log)
 
-                self.AddLog(self.createSenML_URI(uri))
+                #self.AddLog(self.createSenML_URI(uri))
                 return json.dumps(response).encode("utf-8")
             
-            self.AddLog(self.createSenML_URI(uri))
+            #self.AddLog(self.createSenML_URI(uri))
             return json.dumps(self.logs).encode("utf-8")
 
         room = uri[0]
@@ -112,18 +137,30 @@ class SmartHomeLogService(object):
 
         return json.dumps(response).encode("utf-8")
 
-
-
+    ## Funzione per eliminare i log precedenti a un certo timestamp
     def DELETE(self, *uri, **params):
         try:
             if(len(uri) == 0 and len(params) == 1 and ("before" in params)):
                 epoch = float(params.get("before"))
                 # Sovrascrive la lista mantenendo solo gli elementi con EPOCH >= epoch
-                self.logs[:] = [log for log in self.logs if log["EPOCH"] >= epoch]
-                self.AddLog(self.createSenML_URI(uri, params))
+                self.logs[:] = [log for log in self.logs if log["bt"] >= epoch]
+                #self.AddLog(self.createSenML_URI(uri, params))
                 return json.dumps({"status": "success", "deleted_before": epoch}).encode("utf-8")
             else:
                 raise cherrypy.HTTPError(400, "Bad request: Not found")
         except:
             raise cherrypy.HTTPError(500, "Server error")
 
+    def get_logs_by_room(self, paramLogs, room):
+        response = []
+        for log in paramLogs:
+            if room in log["bn"]:
+                response.append(log)
+        return response
+    
+    def get_logs_by_time(self, paramLogs, since):
+        response = []
+        for log in paramLogs:
+            if log["bt"] >= since:
+                response.append(log)
+        return response

@@ -2,11 +2,12 @@ import cherrypy
 import random
 import json
 import time
-from Es04 import SmartHomeLogService
-
+import requests
 
 class SmartHomeSensorService(object):
     exposed = True
+    
+    url_log = "http://127.0.0.1:9092/log/"
 
     rooms_sens = {"living_room": {
                         "temperature": None,
@@ -27,8 +28,6 @@ class SmartHomeSensorService(object):
         "humidity": "%RH",
         "motion_sensor": "bool"
     }
-    
-    logs = SmartHomeLogService()
     
     ## Funzione per inizializzare la classe, utile per la simulazione, in questo modo i sensori hanno già dei valori random al primo avvio del server
     def __init__(self):
@@ -57,7 +56,6 @@ class SmartHomeSensorService(object):
             else:
                 raise cherrypy.HTTPError(400, "Bad request: Invalid URI format. Valid formats are /sensors/, /sensors/{room}, /sensors/{room}/{sens}. Example: /sensors/living_room/temperature")
 
-        self.logs.AddLog(self.createSenML_URI(uri))
         return json.dumps(response).encode("utf-8")
 
     ## Funzione per inizializzare i sensori con valori random, utile per la simulazione
@@ -70,6 +68,30 @@ class SmartHomeSensorService(object):
                     room[sens] = random.choice([True, False])
                 elif(sens == "humidity"):
                     room[sens] = round(random.uniform(10, 90), 2)
+   
+   ## Funzione che invia un log al server di log, in caso di fallimento dell'invio del log, restituisce un errore 500 al client che ha effettuato la richiesta GET, in questo modo si ha la certezza che se il client riceve una risposta positiva, il log è stato salvato correttamente nel server di log
+    def send_log(self, room, sensor, value):
+        timestamp = time.time()
+        payload = {
+            "bn": room + '/' + sensor + '/',
+            "bt": timestamp,
+            "e": [
+                {
+                    "n": "reading",
+                    "v": value,
+                    "u": self.units.get(sensor, None)
+                }
+            ]
+        }
+
+        # Invia il log al server di log via POST; se fallisce, lo salva localmente
+        try:
+            resp = requests.post(self.url_log, json=payload, headers={"Content-Type": "application/json"}, timeout=5)
+            if resp.status_code not in (200, 201):
+                raise cherrypy.HTTPError(404, json.dumps({"error": "Failed to send log to log server, status code: " + str(resp.status_code)}))
+
+        except Exception:
+            raise cherrypy.HTTPError(500, json.dumps({"error": "Failed to send log"}))
    
     ## Funzione per ottenere tutti i sensori di tutte le stanze, utile per il GET senza parametri    
     def get_allSens(self):
@@ -96,6 +118,7 @@ class SmartHomeSensorService(object):
                     "u": self.units.get(sens, None)
                 }
             )
+            self.send_log(room, sens, self.rooms_sens[room][sens])
         
         response = {
             "bn": room + '/',
@@ -126,6 +149,7 @@ class SmartHomeSensorService(object):
                 }
             ]
         }
+        self.send_log(room, sens, self.rooms_sens[room][sens])
         return response
     
     # DA CONTROLLARE

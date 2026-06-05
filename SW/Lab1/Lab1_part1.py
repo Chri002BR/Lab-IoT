@@ -3,10 +3,10 @@ import random
 import json
 import time
 from datetime import datetime, timezone
-from Es01_02 import SmartHomeSensorService
-from Es04 import SmartHomeLogService
-from Es03 import SmartHomeActuatorService
-from Es05 import Catalog
+from SW.Lab1.server_SmartHomeSensorService.Es01_02 import SmartHomeSensorService
+from SW.Lab1.server_SmartHomeLogService.Es04 import SmartHomeLogService
+from SW.Lab1.server_SmartHomeActuatorService.Es03 import SmartHomeActuatorService
+from SW.Lab1.server_Catalog.Es05 import Catalog
 
 if __name__ == '__main__':
     
@@ -25,6 +25,6 @@ if __name__ == '__main__':
     cherrypy.tree.mount(Catalog(), "/catalog", conf)
 
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
-    cherrypy.config.update({'server.socket_port': 9090})
+    cherrypy.config.update({'server.socket_port': 9099})
     cherrypy.engine.start()
     cherrypy.engine.block()
