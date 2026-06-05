@@ -3,6 +3,9 @@ import time
 import threading
 import logging
 
+#TODO togliere i logging e sostituire con print.
+#TODO il base_url non è localhost, ma l'ip del server
+
 # Configurazione del logging per stampare i warning in caso di errore di connessione
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
