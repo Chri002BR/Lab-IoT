@@ -13,6 +13,7 @@ class CatalogClient:
     def __init__(self, base_url="http://localhost:8080"):
         # Rimuove l'eventuale slash finale per evitare doppi slash negli URL
         self.base_url = base_url.rstrip('/')
+        
 
     # ── GET METHODS ──────────────────────────────────────────────────────────
 
