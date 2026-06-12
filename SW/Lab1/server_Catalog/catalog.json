@@ -3,18 +3,21 @@
     "ip": "iot.eclipse.org",
     "port": 1883
   },
-  "devices": [
+  "devices": [],
+  "services": [
     {
-      "id": "device1",
-      "description": "IOT device",
-      "mqtt_info": {
-        "ip": "iot.eclipse.org",
+      "id": "smart_home_controller",
+      "description": "Central Smart Home Controller for Rules and Stats",
+      "resources": [
+        "temperature_controller",
+        "statistics"
+      ],
+      "mqtt": {
+        "ip": "broker.hivemq.com",
         "port": 1883,
-        "topic": "tiot/group14/device/device1/data"
+        "base_topic": "tiot/group14"
       },
-      "resources": [],
-      "insert_timestamp": 1780083837.9759023
+      "insert_timestamp": 1781279854.7093647
     }
-  ],
-  "services": []
+  ]
 }
