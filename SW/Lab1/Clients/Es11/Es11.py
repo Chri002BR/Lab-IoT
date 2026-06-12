@@ -4,6 +4,8 @@ import threading
 import requests
 import paho.mqtt.client as mqtt
 
+#TODO: generato da gemini
+
 CATALOG_URL = "http://localhost:8080"  # Cambia con l'URL reale del tuo Catalogo
 BROKER_MQTT = "broker.hivemq.com"      # Sostituto funzionante di iot.eclipse.org
 PORTA_MQTT = 1883
