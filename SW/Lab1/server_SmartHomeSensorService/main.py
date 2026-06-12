@@ -1,5 +1,7 @@
 import sys
 import os
+from pathlib import Path
+import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
 import cherrypy
@@ -18,8 +20,19 @@ if __name__ == '__main__':
     }
     cherrypy.tree.mount(SmartHomeSensorService(), '/sensors/', conf)
 
-    cherrypy.config.update({'server.socket_host': '0.0.0.0'})
-    cherrypy.config.update({'server.socket_port': 9090})
+    # Carico il file contenente le config per il server
+    uri_path = Path(__file__).parent / "config-uri-server.json"
+    try:
+        with open(uri_path, "r") as f:
+            config = json.load(f)
+        indirizzo = config.get("indirizzo", "0.0.0.0")
+        porta = config.get("porta", "9090")
+    except FileNotFoundError:
+        indirizzo = "0.0.0.0"
+        porta = "9090"
+
+    cherrypy.config.update({'server.socket_host': indirizzo})
+    cherrypy.config.update({'server.socket_port': int(porta)})
     cherrypy.engine.start()
     cherrypy.engine.block()
     

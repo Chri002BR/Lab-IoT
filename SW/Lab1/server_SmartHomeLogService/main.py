@@ -1,5 +1,8 @@
 import sys
 import os
+from pathlib import Path
+import json
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
 import cherrypy
@@ -46,7 +49,18 @@ if __name__ == '__main__':
     cherrypy.engine.subscribe('stop', mqtt_sub.stop)
 
     # 5. Avvio del Server
-    cherrypy.config.update({'server.socket_host': '0.0.0.0'})
-    cherrypy.config.update({'server.socket_port': 9092})
+    # Carico il file contenente le config per il server
+    uri_path = Path(__file__) / "config-uri-server.json"
+    try:
+        with open(uri_path, "r") as f:
+            config = json.load(f)
+        indirizzo = config.get("indirizzo", "0.0.0.0")
+        porta = config.get("porta", "9092")
+    except FileNotFoundError:
+        indirizzo = "0.0.0.0"
+        porta = "9092"
+
+    cherrypy.config.update({'server.socket_host': indirizzo})
+    cherrypy.config.update({'server.socket_port': int(porta)})
     cherrypy.engine.start()
     cherrypy.engine.block()

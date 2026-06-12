@@ -4,11 +4,12 @@ import json
 import time
 import random
 import threading
+from pathlib import Path
 
 #TODO: generato da gemini
 
 # Configurazione puntata al tuo Catalogo CherryPy (Es05.py)
-CATALOG_BASE_URL = "http://localhost:8080/catalog"
+# CATALOG_BASE_URL = "http://localhost:8080/catalog"
 DEVICE_ID = "sensor-01"  # ID del dispositivo richiesto
 
 class MQTTTemperaturePublisher:
@@ -18,6 +19,16 @@ class MQTTTemperaturePublisher:
         self.broker_port = None
         self.pub_interval = 30  # Intervallo di default richiesto (30 secondi)
         self.running = True
+
+        # Leggo l'uri del catalog dal file di config
+        uri_path = Path(__file__).parent / "config-uri-client.json"
+        
+        try:
+            with open(uri_path, "r") as f:
+                config = json.load(f)
+            self.CATALOG_BASE_URL = config.get("url_catalog", "http://localhost:8080/catalog")
+        except FileNotFoundError:
+            self.CATALOG_BASE_URL = "http://localhost:8080/catalog"
 
         # Configurazione dei topic in linea con le specifiche
         self.base_topic = f"/tiot/g01/{self.device_id}"

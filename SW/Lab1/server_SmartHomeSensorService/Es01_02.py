@@ -3,11 +3,12 @@ import random
 import json
 import time
 import requests
+from pathlib import Path
 
 class SmartHomeSensorService(object):
     exposed = True
     
-    url_log = "http://127.0.0.1:9092/log/"
+    # url_log = "http://127.0.0.1:9092/log/"
 
     rooms_sens = {"living_room": {
                         "temperature": None,
@@ -32,6 +33,16 @@ class SmartHomeSensorService(object):
     ## Funzione per inizializzare la classe, utile per la simulazione, in questo modo i sensori hanno già dei valori random al primo avvio del server
     def __init__(self):
         self.InitSens()
+        # Carico il file contenente gli uri, così da prendere uri_log
+        uri_path = Path(__file__).parent / "config-uri-client.json"
+        
+        try:
+            with open(uri_path, "r") as f:
+                config = json.load(f)
+            self.url_log = config.get("url_log", "http://127.0.0.1:9092/log/")
+        except FileNotFoundError:
+            self.url_log = "http://127.0.0.1:9092/log/"
+
     
     ## Funzione che gestisce le richieste GET, in base alla presenza o meno di parametri e alla loro tipologia (URI o query parameters) decide quale funzione chiamare per ottenere i dati richiesti
     def GET(self, *uri, **params):

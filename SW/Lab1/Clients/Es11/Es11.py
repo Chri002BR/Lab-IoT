@@ -3,10 +3,11 @@ import time
 import threading
 import requests
 import paho.mqtt.client as mqtt
+from pathlib import Path
 
 #TODO: generato da gemini
 
-CATALOG_URL = "http://localhost:8080"  # Cambia con l'URL reale del tuo Catalogo
+# CATALOG_URL = "http://localhost:8080"  # Cambia con l'URL reale del tuo Catalogo
 BROKER_MQTT = "broker.hivemq.com"      # Sostituto funzionante di iot.eclipse.org
 PORTA_MQTT = 1883
 ID_DISPOSITIVO = "MQTT_Command_Publisher_TeamX"
@@ -19,6 +20,16 @@ class ActuatorPublisher:
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         self.running = True
+
+        # Leggo l'uri del catalog dal file di config
+        uri_path = Path(__file__).parent / "config-uri-client.json"
+        
+        try:
+            with open(uri_path, "r") as f:
+                config = json.load(f)
+            self.CATALOG_BASE_URL = config.get("url_catalog", "http://localhost:8080/catalog")
+        except FileNotFoundError:
+            self.CATALOG_BASE_URL = "http://localhost:8080/catalog"
 
     def registra_nel_catalogo(self):
         """Invia una richiesta REST POST/PUT per registrarsi al Catalogo e mantiene il keep-alive"""
