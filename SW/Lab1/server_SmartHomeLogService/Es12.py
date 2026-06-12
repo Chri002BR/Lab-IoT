@@ -3,6 +3,8 @@ import json
 import time
 import paho.mqtt.client as PahoMQTT
 
+#TODO: generato da gemini
+
 # --- NUOVA CLASSE SUBSCRIBER MQTT INTEGRATA PER L'ESERCIZIO 12 ---
 class MQTTSubscriber:
     def __init__(self, clientID, broker, port, topic, log_service):

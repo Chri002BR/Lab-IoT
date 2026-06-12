@@ -5,6 +5,8 @@ import time
 import random
 import threading
 
+#TODO: generato da gemini
+
 # Configurazione puntata al tuo Catalogo CherryPy (Es05.py)
 CATALOG_BASE_URL = "http://localhost:8080/catalog"
 DEVICE_ID = "sensor-01"  # ID del dispositivo richiesto
