@@ -35,7 +35,7 @@ class SmartHomeActuatorService(object):
     def __init__(self):
         self.InitAct()
 
-    ## Funzione che gestisce le richieste GET, in base alla presenza o meno di parametri e alla loro tipologia (URI o query parameters) decide quale funzione chiamare per ottenere i dati richiesti
+    ## Funzione che gestisce le richieste GET, in base alla presenza o meno di parametri e alla loro tipologia (URI o query parameters) decide quale funzione chiamare per ottenere i dati richiesti  
     def GET(self, *uri, **params):
         if(len(uri) == 0 and len(params) != 0):
             keys = list(params.keys())
