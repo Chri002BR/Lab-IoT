@@ -152,17 +152,3 @@ class SmartHomeSensorService(object):
         self.send_log(room, sens, self.rooms_sens[room][sens])
         return response
     
-    # DA CONTROLLARE
-    # Da aggiungere il tipo di richiesta (GET, POST, ...) non richiesto ma così non si capisce nulla
-    def createSenML_URI(self, uri):
-        finalURI = {
-            "s": "sensors" 
-        }
-        
-        if len(uri) > 0:
-            finalURI["bn"] = uri[0]  # Stanza
-            
-        if len(uri) > 1:
-            finalURI["n"] = uri[1]   # Sensore
-
-        return finalURI
