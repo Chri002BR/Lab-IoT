@@ -16,7 +16,7 @@ STALE_THRESHOLD  = 120   # seconds before a registration is considered stale
 
 DEFAULT_CATALOG = {
     "broker": {
-        "ip":   "iot.eclipse.org",
+        "ip":   "broker.hivemq.com",
         "port": 1883
     },
     "devices":  [],
