@@ -1,4 +1,4 @@
 {
   "uri_log": "http://127.0.0.1:9092/log/",
-  "uri_catalog": "http://localhost:8080/catalog"
+  "uri_catalog": "http://localhost:9093/catalog"
 }

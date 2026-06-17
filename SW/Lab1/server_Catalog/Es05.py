@@ -16,7 +16,7 @@ STALE_THRESHOLD  = 120   # seconds before a registration is considered stale
 
 DEFAULT_CATALOG = {
     "broker": {
-        "ip":   "iot.eclipse.org",
+        "ip":   "broker.hivemq.com",
         "port": 1883
     },
     "devices":  [],
@@ -35,10 +35,10 @@ class Catalog(object):
 
         # Background cleanup thread (daemon=True so it dies with the process)
         threading.Thread(target=self._cleanup_loop, daemon=True).start()
-        print("[Catalog] Started. Listening on http://localhost:8080/catalog")
+        print("[Catalog] Started. Listening on http://localhost:9093/catalog")
 
         # per far partire il bridge con questa classe
-        broker_info = self._data.get("broker", {"ip": "iot.eclipse.org", "port": 1883})
+        broker_info = self._data.get("broker", {"ip": "broker.hivemq.com", "port": 1883})
         broker_host = "broker.hivemq.com"
         broker_port = 1883
 
@@ -173,7 +173,7 @@ class Catalog(object):
             "mqtt": {                                          <- optional
               "ip":    "iot.eclipse.org",
               "port":  1883,
-              "topic": "/tiot/g01/living_room/temperature"
+              "topic": "/tiot/group14/living_room/temperature"
             },
             "resources": ["temperature", "humidity"]
           }
