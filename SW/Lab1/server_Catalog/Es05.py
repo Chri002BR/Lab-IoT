@@ -10,7 +10,7 @@ STALE_THRESHOLD  = 120   # seconds before a registration is considered stale
 
 
 # Da rivedere punto 3 campi opzionali degli endpoint e MQTT (ip,...) (non dovrebbero essere gestiti da qui, ma solo salvati nel Json)
-
+#TODO: modificare da AI (commenti generati)
 
 # ── Default catalog structure (used when catalog.json does not exist) ────────
 

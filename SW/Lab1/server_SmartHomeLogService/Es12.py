@@ -3,7 +3,8 @@ import json
 import time
 import paho.mqtt.client as PahoMQTT
 
-#TODO: generato da gemini
+#TODO: dare un occhiata a gestione versione mqtt, tolta gestione in es09
+#TODO: da rivedere chiedere chi lo ha fatto, se mio è solo generato e non testato
 
 # --- NUOVA CLASSE SUBSCRIBER MQTT INTEGRATA PER L'ESERCIZIO 12 ---
 class MQTTSubscriber:

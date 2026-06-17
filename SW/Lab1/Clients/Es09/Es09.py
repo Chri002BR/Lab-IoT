@@ -6,10 +6,6 @@ import random
 import threading
 from pathlib import Path
 
-#TODO: generato da gemini
-
-# Configurazione puntata al tuo Catalogo CherryPy (Es05.py)
-#DEVICE_ID = "gruppo14_Temp"  # ID del dispositivo richiesto
 
 class MQTTTemperaturePublisher:
     def __init__(self):

@@ -6,6 +6,7 @@ import requests
 import threading  # MODIFICATO DA CLAUDE: aggiunto import threading per il thread di refresh periodico (Es06 - Requisito 4)
 
 #TODO mettere il json con IP anche per il catalog
+#TODO modificare da CLAUDE e rivedere commenti
 
 # MODIFICATO DA CLAUDE: importiamo CatalogClient da Es06 per poter registrare il servizio
 # e fare il refresh periodico. (Es06 - Requisiti 3 e 4)
@@ -100,7 +101,7 @@ class SmartHomeSensorService(object):
     # __init__ e _refresh_loop. (Es06 - Requisiti 3 e 4)
     def _register_on_catalog(self):
         payload = {
-            "id":          self.SERVICE_ID,
+            "id":          self.ScmdERVICE_ID,
             "description": self.SERVICE_DESCRIPTION,
             "endpoint":    self.SERVICE_ENDPOINT,
             "resources":   self.SERVICE_RESOURCES,

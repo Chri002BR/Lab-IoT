@@ -1,8 +1,8 @@
 import requests
 
-#TODO togliere i logging e sostituire con print.
 #TODO il indirizzo_catalog non è localhost, ma l'ip del server
 #TODO gestire in modo alternativo libreria requests se necessario
+#TODO rivedere commenti generati AI
 
 # Configurazione del logging per stampare i warning in caso di errore di connessione
 #logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

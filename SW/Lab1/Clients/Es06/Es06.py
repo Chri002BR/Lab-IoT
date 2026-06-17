@@ -1,5 +1,5 @@
 from SW.Lab1.CatalogClient import CatalogClient
-
+#TODO: modificare da AI
 # ── DEMO DI FUNZIONAMENTO (Requisito 1 & 2: Demonstrate all APIs) ────────────
 if __name__ == "__main__":
     print("=== Test di CatalogClient ===")

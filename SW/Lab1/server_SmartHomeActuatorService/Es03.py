@@ -10,6 +10,7 @@ from SW.Lab1.CatalogClient import CatalogClient
 #from SW.Lab1.Clients.Es06.Es06 import CatalogClient  # MODIFICATO DA CLAUDE: import di CatalogClient da Es06 per registrazione e refresh sul Catalog (Es06 - Requisiti 3 e 4)
 
 #TODO mettere il json con IP anche per il catalog
+#TODO modificare da CLAUDE e rivedere commenti
 
 class SmartHomeActuatorService(object):
     exposed = True
