@@ -7,8 +7,7 @@ import threading
 from SW.Lab1.CatalogClient import CatalogClient
 from pathlib import Path
 
-#TODO mettere il json con IP anche per il catalog
-#TODO modificare da CLAUDE e rivedere commenti
+#TODO controllare
 
 class SmartHomeSensorService(object):
 
@@ -73,16 +72,16 @@ class SmartHomeSensorService(object):
             self.server_address = config.get("server_address", "0.0.0.0")
             self.server_port = config.get("server_port", "9090")
             self.url_log = config.get("url_log", "http://127.0.0.1:9092/log/")
-            self.url_catalog = config.get("url_catalog", "http://localhost:9093")
+            self.url_catalog = config.get("url_catalog", "http://localhost:9093/catalog/")
 
         except FileNotFoundError:
             self.url_log = "http://127.0.0.1:9092/log/"
-            self.url_catalog = "http://localhost:9093"
+            self.url_catalog = "http://localhost:9093/catalog/"
             self.server_address = "0.0.0.0"
             self.server_port = "9090"
         
         # Creo l'endpoint del servizio combinando l'indirizzo e la porta del server
-        self.service_endpoint = f"{self.server_address}:{self.server_port}"
+        self.service_endpoint = f"{self.server_address}:{self.server_port}/sensors"
 
         # Inizializzo il client per interagire con il Catalog
         self._catalog_client = CatalogClient(self.url_catalog)

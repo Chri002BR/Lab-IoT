@@ -1,8 +1,8 @@
-# Esercizi 01-02 (E SUCCESSIVE MODIFICHE)
+# Esercizi 03 (E SUCCESSIVE MODIFICHE)
 
 ## Configurazione
 
-Il server (`Es01_02.py`, avviato tramite il relativo file `main.py`) recupera l'URI necessario per connettersi al Catalog e al Log dal file di configurazione `config-uri-client.json`, che deve trovarsi nella stessa cartella degli script.
+Il server (`Es03.py`, avviato tramite il relativo file `main.py`) recupera l'URI necessario per connettersi al Catalog e al Log dal file di configurazione `config-uri-client.json`, che deve trovarsi nella stessa cartella degli script.
 
 Il file JSON deve contenere le seguenti chiavi, valorizzate appropriatamente:
 - `server_address`: indirizzo IP del server stesso

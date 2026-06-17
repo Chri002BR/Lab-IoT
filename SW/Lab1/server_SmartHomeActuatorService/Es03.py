@@ -2,43 +2,40 @@ import cherrypy
 import random
 import json
 import time
-from datetime import datetime, timezone
-import threading  # MODIFICATO DA CLAUDE: aggiunto import threading per il thread di refresh periodico (Es06 - Requisito 4)
-
+from pathlib import Path
+import threading
 import requests
 from SW.Lab1.CatalogClient import CatalogClient
-#from SW.Lab1.Clients.Es06.Es06 import CatalogClient  # MODIFICATO DA CLAUDE: import di CatalogClient da Es06 per registrazione e refresh sul Catalog (Es06 - Requisiti 3 e 4)
 
 #TODO mettere il json con IP anche per il catalog
 #TODO modificare da CLAUDE e rivedere commenti
 
 class SmartHomeActuatorService(object):
+
+
+    ### INIZIALIZZAZIONE ###
+
+
     exposed = True
-    
-    url_log = "http://127.0.0.1:9092/log/"
 
-    units = {
-        "thermostat": "Cel",
-        "lights": "bool",
-        "blinds": "pct"
-    }
+    # Variabile di classe per memorizzare l'URL del server di log
+    url_log = None # Viene inizializzata nel costruttore
 
-    # MODIFICATO DA CLAUDE: aggiunte costanti di classe per identificare il servizio nel Catalog
-    # e centralizzare la configurazione (Es06 - Requisito 3)
-    SERVICE_ID          = "smart-home-actuator-service"
-    SERVICE_DESCRIPTION = "Servizio REST che espone il controllo degli attuatori della smart home (termostato, luci, tapparelle)"
-    SERVICE_ENDPOINT    = "http://localhost:8083/actuators"
-    SERVICE_RESOURCES   = ["thermostat", "lights", "blinds"]
+    # Variabili di classe per memorizzare le informazioni del servizio da registrare sul Catalog
+    service_id = "smart-home-actuator-service"
+    service_description = "Servizio REST che espone il controllo degli attuatori della smart home (termostato, luci, tapparelle)"
+    service_endpoint = None # Viene inizializzata nel costruttore in base alla configurazione del server
+    service_resources = ["thermostat", "lights", "blinds"]
 
-    # MODIFICATO DA CLAUDE: aggiunte costanti per indirizzo Catalog e intervallo di refresh (Es06 - Requisito 4)
-    CATALOG_ADDRESS  = "http://localhost:9093"
-    REFRESH_INTERVAL = 60   # secondi tra un refresh e il successivo (come da specifica Es06)
+    # Variabili di classe per memorizzare l'URL del Catalog e l'intervallo di refresh
+    url_catalog = None # Viene inizializzata nel costruttore
+    refresh_interval = 60   # secondi tra un refresh e il successivo (come da specifica Es06)
 
-    ## Funzione per inizializzare la classe, utile per la simulazione, in questo modo i sensori hanno già dei valori random al primo avvio del server
+    ## Funzione per inizializzare la classe
     def __init__(self):
-        self.rooms_act = {                          # MODIFICATO DA CLAUDE: spostato da attributo di classe
-            "living_room": {                        # ad attributo di istanza per evitare condivisione
-                "thermostat": None,                 # involontaria dello stato tra istanze (buona pratica OOP)
+        self.rooms_act = {
+            "living_room": {
+                "thermostat": None,
                 "lights":     None,
                 "blinds":     None,
             },
@@ -54,27 +51,43 @@ class SmartHomeActuatorService(object):
             },
         }
 
+        self.units = {
+            "thermostat": "Cel",
+            "lights": "bool",
+            "blinds": "pct"
+        }
+
         self.InitAct()
 
-        # Leggo l'URI dal file di config
+        # Carico il file contenente gli uri
         uri_path = Path(__file__).parent / "config-uri-client.json"
-
+        
+        # Leggo le configurazioni dal file JSON; se il file non esiste, uso valori di default
         try:
             with open(uri_path, "r") as f:
                 config = json.load(f)
+            self.server_address = config.get("server_address", "0.0.0.0")
+            self.server_port = config.get("server_port", "9091")
             self.url_log = config.get("url_log", "http://127.0.0.1:9092/log/")
+            self.url_catalog = config.get("url_catalog", "http://localhost:9093/catalog/")
+
         except FileNotFoundError:
             self.url_log = "http://127.0.0.1:9092/log/"
+            self.url_catalog = "http://localhost:9093/catalog/"
+            self.server_address = "0.0.0.0"
+            self.server_port = "9091"
+        
+        # Creo l'endpoint del servizio combinando l'indirizzo e la porta del server
+        self.service_endpoint = f"{self.server_address}:{self.server_port}/actuators"
 
-        # MODIFICATO DA CLAUDE: creazione dell'istanza di CatalogClient per registrazione e refresh (Es06 - Requisito 3)
-        self._catalog_client = CatalogClient(self.CATALOG_ADDRESS)
 
-        # MODIFICATO DA CLAUDE: registrazione del servizio al Catalog all'avvio.
-        # Se il Catalog non è raggiungibile il servizio parte comunque; il thread riproverà al ciclo successivo. (Es06 - Requisiti 3 e 5)
+        # Inizializzo il client per interagire con il Catalog
+        self._catalog_client = CatalogClient(self.url_catalog)
+
+        # Registrazione iniziale del servizio sul Catalog. Se la registrazione fallisce, il servizio continuerà a funzionare, ma verrà riprovata al prossimo ciclo di refresh.
         self._register_on_catalog()
 
-        # MODIFICATO DA CLAUDE: avvio del thread daemon di refresh periodico.
-        # daemon=True garantisce che il thread si fermi automaticamente alla chiusura del processo. (Es06 - Requisito 4)
+        # Avvio del thread di refresh periodico che chiama _refresh_loop() ogni refresh_interval secondi.
         self._refresh_thread = threading.Thread(
             target=self._refresh_loop,
             daemon=True,
@@ -82,38 +95,39 @@ class SmartHomeActuatorService(object):
         )
         self._refresh_thread.start()
 
-    # ── CATALOG HELPERS ──────────────────────────────────────────────────────
 
-    # MODIFICATO DA CLAUDE: nuovo metodo privato che costruisce il payload e chiama
-    # CatalogClient.register_service() all'avvio, centralizzando la logica di registrazione. (Es06 - Requisito 3)
+    ### GESTIONE DEL CATALOG ###
+
+
+    ## Funzione privata per registrare il servizio sul Catalog. Se la registrazione fallisce, verrà riprovata al prossimo ciclo di refresh.
     def _register_on_catalog(self):
         payload = {
-            "id":          self.SERVICE_ID,
-            "description": self.SERVICE_DESCRIPTION,
-            "endpoint":    self.SERVICE_ENDPOINT,
-            "resources":   self.SERVICE_RESOURCES,
+            "id":          self.service_id,
+            "description": self.service_description,
+            "endpoint":    self.service_endpoint,
+            "resources":   self.service_resources,
         }
         result = self._catalog_client.register_service(payload)
         if not isinstance(result, int):  # Se il risultato non è un codice di errore, consideriamo la registrazione riuscita
-            print(f"[CatalogClient] Servizio '{self.SERVICE_ID}' registrato sul Catalog: {result}")
+            print(f"[GestioneCatalog] Servizio '{self.service_id}' registrato sul Catalog: {result}")
         else:
-            print(f"[CatalogClient] WARNING: registrazione di '{self.SERVICE_ID}' non riuscita. Verrà riprovata al prossimo ciclo. - Status code: {result}")
-            time.sleep(self.REFRESH_INTERVAL)
+            print(f"[GestioneCatalog] WARNING: registrazione di '{self.service_id}' non riuscita. Verrà riprovata al prossimo ciclo. - Status code: {result}")
+            time.sleep(self.refresh_interval)
             self._register_on_catalog()  # Riprova la registrazione al prossimo ciclo
 
-    # MODIFICATO DA CLAUDE: nuovo metodo privato che gira in loop e chiama
-    # CatalogClient.refresh_service() ogni REFRESH_INTERVAL secondi.
-    # In caso di errore viene stampato un warning e il thread continua senza interrompersi. (Es06 - Requisiti 4 e 5)
+    ## Funzione privata che esegue un ciclo infinito di refresh del servizio sul Catalog ogni refresh_interval secondi. Se il refresh fallisce, verrà riprovato al prossimo ciclo.
     def _refresh_loop(self):
         while True:
-            time.sleep(self.REFRESH_INTERVAL)
-            result = self._catalog_client.refresh_service(self.SERVICE_ID)
+            time.sleep(self.refresh_interval)
+            result = self._catalog_client.refresh_service(self.service_id)
             if not isinstance(result, int):  # Se il risultato non è un codice di errore, consideriamo il refresh riuscito
-                print(f"[CatalogClient] Refresh di '{self.SERVICE_ID}' eseguito con successo: {result}")
+                print(f"[GestioneCatalog] Refresh di '{self.service_id}' eseguito con successo: {result}")
             else:
-                print(f"[CatalogClient] WARNING: refresh di '{self.SERVICE_ID}' non riuscito. Verrà riprovato al prossimo ciclo.")
+                print(f"[GestioneCatalog] WARNING: refresh di '{self.service_id}' non riuscito. Verrà riprovato al prossimo ciclo.")
 
-    # ── REST HANDLERS ────────────────────────────────────────────────────────
+
+    ### GESTIONE DELLE RICHIESTE REST ###
+
 
     ## Funzione che gestisce le richieste GET, in base alla presenza o meno di parametri e alla loro tipologia (URI o query parameters) decide quale funzione chiamare per ottenere i dati richiesti  
     def GET(self, *uri, **params):
@@ -217,6 +231,10 @@ class SmartHomeActuatorService(object):
 
             return json.dumps(self.get_room_act(room, sensor)).encode("utf-8")
 
+
+    ### UTILITIES ###
+
+    
     ## Funzione per inizializzare gli attuatori con valori random, utile per la simulazione
     def InitAct(self):
         for room in self.rooms_act.values():
@@ -306,18 +324,3 @@ class SmartHomeActuatorService(object):
             ]
         }
         return response
-
-
-# ── AVVIO DEL SERVER CHERRYPY ────────────────────────────────────────────────
-if __name__ == "__main__":
-    conf = {
-        "/": {
-            "request.dispatch": cherrypy.dispatch.MethodDispatcher(),
-            "tools.response_headers.on": True,
-            "tools.response_headers.headers": [("Content-Type", "application/json")],
-        }
-    }
-    cherrypy.tree.mount(SmartHomeActuatorService(), "/actuators", conf)
-    cherrypy.config.update({"server.socket_port": 8083})
-    cherrypy.engine.start()
-    cherrypy.engine.block()

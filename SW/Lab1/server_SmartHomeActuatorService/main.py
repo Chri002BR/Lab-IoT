@@ -25,8 +25,8 @@ if __name__ == '__main__':
     try:
         with open(uri_path, "r") as f:
             config = json.load(f)
-        indirizzo = config.get("indirizzo", "0.0.0.0")
-        porta = config.get("porta", "9091")
+        indirizzo = config.get("server_address", "0.0.0.0")
+        porta = config.get("server_port", "9091")
     except FileNotFoundError:
         indirizzo = "0.0.0.0"
         porta = "9091"
