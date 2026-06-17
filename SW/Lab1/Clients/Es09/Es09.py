@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 class MQTTTemperaturePublisher:
+    ## Funzione di inizializzazione del client MQTT per la pubblicazione della temperatura
     def __init__(self):
         self.device_id = "gruppo14_Temp"
         self.broker_host = None
@@ -18,21 +19,26 @@ class MQTTTemperaturePublisher:
         # Leggo l'uri del catalog dal file di config
         uri_path = Path(__file__).parent / "config-uri-client.json"
         
+        # Recupero l'URL del catalogo dal file di configurazione, con fallback al default se non trovato
         try:
             with open(uri_path, "r") as f:
                 config = json.load(f)
             self.CATALOG_BASE_URL = config.get("uri_catalog", "http://localhost:9093/catalog")
+            print(f"Catalog URL: {self.CATALOG_BASE_URL}")
         except Exception: #se non trova su config, usa il default:
             self.CATALOG_BASE_URL = "http://localhost:9093/catalog"
+            print(f"Impossibile leggere {uri_path}, uso default {self.CATALOG_BASE_URL}")
 
-        # Configurazione dei topic in linea con le specifiche
+        # Configurazione dei topic
         self.base_topic = f"/tiot/group14/{self.device_id}"
         self.pub_topic = f"{self.base_topic}/temperature"
         self.cmd_topic = f"{self.base_topic}/commands"
 
+    ## Funzione per ottenere l'host e la porta del broker dal catalogo
     def get_broker_from_catalog(self):
         url = f"{self.CATALOG_BASE_URL}/broker"
-        print(f"Broker URL: {url}")
+        print(f"URL broker: {url}")
+        
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
@@ -41,13 +47,14 @@ class MQTTTemperaturePublisher:
                 self.broker_port = int(broker_data.get("port", 1883))
                 print(f"Broker individuato: {self.broker_host}:{self.broker_port}")
             else:
-                raise Exception(f"Status code {response.status_code}")
+                raise Exception(f"Status code: {response.status_code}")
         except Exception as e:
             print(f"Errore di connessione al catalogo ({e}).")
-            # Fallback se il catalogo non risponde (usando test.mosquitto.org dato che iot.eclipse.org è spento)
+            # Fallback se il catalogo non risponde
             self.broker_host = "broker.hivemq.com"
             self.broker_port = 1883
 
+    ## Funzione per registrare il dispositivo e mantenere la connessione attiva con il catalogo
     def register_and_keep_alive(self):
         print("Prima registrazione (POST), mantiene il dispositivo attivo con ping ogni 60 secondi")
 

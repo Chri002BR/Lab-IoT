@@ -3,49 +3,41 @@ import random
 import json
 import time
 import requests
-import threading  # MODIFICATO DA CLAUDE: aggiunto import threading per il thread di refresh periodico (Es06 - Requisito 4)
+import threading
+from SW.Lab1.CatalogClient import CatalogClient
+from pathlib import Path
 
 #TODO mettere il json con IP anche per il catalog
 #TODO modificare da CLAUDE e rivedere commenti
 
-# MODIFICATO DA CLAUDE: importiamo CatalogClient da Es06 per poter registrare il servizio
-# e fare il refresh periodico. (Es06 - Requisiti 3 e 4)
-# NOTA: assicurarsi che Es06.py sia nella stessa directory o nel PYTHONPATH
-from SW.Lab1.CatalogClient import CatalogClient #cambiato import perchè spostato
-
 class SmartHomeSensorService(object):
+
+
+    ### INIZIALIZZAZIONE ###
+
+
     exposed = True
     
-    url_log = "http://127.0.0.1:9092/log/"
+    # Variabile di classe per memorizzare l'URL del server di log
+    url_log = None # Inizializzata nel'init
 
-    # MODIFICATO DA CLAUDE: spostati rooms_sens e units a livello di istanza (dentro __init__)
-    # per evitare che siano attributi di classe condivisi tra istanze diverse. (buona pratica OOP)
-    # I dizionari come attributi di classe sono condivisi tra tutte le istanze e possono causare
-    # comportamenti inattesi in ambienti multi-thread o con più istanze.
+    # Variabili di classe per memorizzare le informazioni del servizio da registrare sul Catalog
+    service_id = "smart-home-sensor-service"
+    service_description = "Servizio che espone le letture dei sensori della smart home"
+    service_endpoint = None # Inizializzata nel'init
+    service_resources = ["temperature", "humidity", "motion_sensor"]
 
-    units = {
-        "temperature": "Cel",
-        "humidity": "%RH",
-        "motion_sensor": "bool"
-    }
+    # Variabili di classe per memorizzare l'URL del Catalog e l'intervallo di refresh
+    url_catalog = None # Inizializzata nel'init
+    refresh_interval = 60 # secondi tra un refresh e il successivo
 
-    # MODIFICATO DA CLAUDE: aggiunto SERVICE_ID e SERVICE_DESCRIPTION come costanti di classe
-    # per identificare univocamente questo servizio nel Catalog. (Es06 - Requisito 3)
-    SERVICE_ID          = "smart-home-sensor-service"
-    SERVICE_DESCRIPTION = "Servizio REST che espone le letture dei sensori della smart home (temperatura, umidità, movimento)"
-    SERVICE_ENDPOINT    = "http://localhost:9090/sensors"   # endpoint REST di questo servizio
-    SERVICE_RESOURCES   = ["temperature", "humidity", "motion_sensor"]
-
-    # MODIFICATO DA CLAUDE: aggiunto CATALOG_ADDRESS e REFRESH_INTERVAL come costanti di classe
-    # per centralizzare la configurazione del catalog e del periodo di refresh. (Es06 - Requisito 4)
-    CATALOG_ADDRESS  = "http://localhost:9093"
-    REFRESH_INTERVAL = 60   # secondi tra un refresh e il successivo (come da specifica Es06)
-
-    ## Funzione per inizializzare la classe, utile per la simulazione, in questo modo i sensori hanno già dei valori random al primo avvio del server
+    ## Funzione per inizializzare la classe, carica le configurazioni da file, inizializza i sensori e registra il servizio sul Catalog
     def __init__(self):
-        self.rooms_sens = {                         # MODIFICATO DA CLAUDE: spostato da attributo di classe
-            "living_room": {                        # ad attributo di istanza per evitare condivisione
-                "temperature":  None,               # involontaria dello stato tra istanze. (buona pratica OOP)
+
+        # Inizializzazione dei sensori per ogni stanza, con valori iniziali a None
+        self.rooms_sens = {
+            "living_room": {
+                "temperature":  None,
                 "humidity":     None,
                 "motion_sensor": None,
             },
@@ -61,78 +53,87 @@ class SmartHomeSensorService(object):
             },
         }
 
+        # Dizionario per mappare i tipi di sensori alle loro unità di misura
+        self.units = {
+            "temperature": "Cel",
+            "humidity": "%RH",
+            "motion_sensor": "bool"
+        }
+
+        # Inizializzazione dei sensori con valori random
         self.InitSens()
 
-        # Carico il file contenente gli uri, così da prendere uri_log
+        # Carico il file contenente gli uri
         uri_path = Path(__file__).parent / "config-uri-client.json"
         
+        # Leggo le configurazioni dal file JSON; se il file non esiste, uso valori di default
         try:
             with open(uri_path, "r") as f:
                 config = json.load(f)
+            self.server_address = config.get("server_address", "0.0.0.0")
+            self.server_port = config.get("server_port", "9090")
             self.url_log = config.get("url_log", "http://127.0.0.1:9092/log/")
+            self.url_catalog = config.get("url_catalog", "http://localhost:9093")
+
         except FileNotFoundError:
             self.url_log = "http://127.0.0.1:9092/log/"
+            self.url_catalog = "http://localhost:9093"
+            self.server_address = "0.0.0.0"
+            self.server_port = "9090"
+        
+        # Creo l'endpoint del servizio combinando l'indirizzo e la porta del server
+        self.service_endpoint = f"{self.server_address}:{self.server_port}"
 
-        # MODIFICATO DA CLAUDE: creazione dell'istanza di CatalogClient che verrà usata
-        # per la registrazione iniziale e i refresh periodici. (Es06 - Requisito 3)
-        self._catalog_client = CatalogClient(self.CATALOG_ADDRESS)
+        # Inizializzo il client per interagire con il Catalog
+        self._catalog_client = CatalogClient(self.url_catalog)
 
-        # MODIFICATO DA CLAUDE: registrazione del servizio al Catalog al momento dell'avvio.
-        # Se il Catalog non è raggiungibile il servizio parte comunque (warning stampato
-        # da CatalogClient.register_service); il thread di refresh riproverà al ciclo successivo.
-        # (Es06 - Requisiti 3 e 5)
+        # Registrazione iniziale del servizio sul Catalog. Se la registrazione fallisce, il servizio continuerà a funzionare, ma verrà riprovata al prossimo ciclo di refresh.
         self._register_on_catalog()
 
-        # MODIFICATO DA CLAUDE: avvio del thread daemon di refresh periodico.
-        # daemon=True garantisce che il thread si fermi automaticamente quando il
-        # processo principale termina, senza bisogno di join esplicito. (Es06 - Requisito 4)
+        # Avvio del thread di refresh periodico che chiama _refresh_loop() ogni refresh_interval secondi.
         self._refresh_thread = threading.Thread(
             target=self._refresh_loop,
-            daemon=True,
+            daemon=True, # Il thread si fermerà automaticamente quando il processo principale termina
             name="CatalogRefreshThread"
         )
         self._refresh_thread.start()
 
-    # ── CATALOG HELPERS ──────────────────────────────────────────────────────
 
-    # MODIFICATO DA CLAUDE: nuovo metodo privato che costruisce il payload di registrazione
-    # e lo invia al Catalog tramite CatalogClient.register_service().
-    # Centralizza la logica di registrazione per evitare duplicazione di codice tra
-    # __init__ e _refresh_loop. (Es06 - Requisiti 3 e 4)
+    ### GESTIONE DEL CATALOG ###
+
+
+    ## Funzione privata per registrare il servizio sul Catalog. Se la registrazione fallisce, verrà riprovata al prossimo ciclo di refresh.
     def _register_on_catalog(self):
         payload = {
-            "id":          self.ScmdERVICE_ID,
-            "description": self.SERVICE_DESCRIPTION,
-            "endpoint":    self.SERVICE_ENDPOINT,
-            "resources":   self.SERVICE_RESOURCES,
+            "id":          self.service_id,
+            "description": self.service_description,
+            "endpoint":    self.service_endpoint,
+            "resources":   self.service_resources,
         }
         result = self._catalog_client.register_service(payload)
         if not isinstance(result, int):  # Se il risultato non è un codice di errore, consideriamo la registrazione riuscita
-            print(f"[CatalogClient] Servizio '{self.SERVICE_ID}' registrato sul Catalog: {result}")
+            print(f"[GestioneCatalog] Servizio '{self.service_id}' registrato sul Catalog: {result}")
         else:
-            print(f"[CatalogClient] WARNING: registrazione di '{self.SERVICE_ID}' non riuscita. Verrà riprovata al prossimo ciclo. - Status code: {result}")
-            time.sleep(self.REFRESH_INTERVAL)
+            print(f"[GestioneCatalog] WARNING: registrazione di '{self.service_id}' non riuscita. Verrà riprovata al prossimo ciclo. - Status code: {result}")
+            time.sleep(self.refresh_interval)
             self._register_on_catalog()  # Riprova la registrazione al prossimo ciclo
 
-    # MODIFICATO DA CLAUDE: nuovo metodo privato che gira in loop e chiama
-    # CatalogClient.refresh_service() ogni REFRESH_INTERVAL secondi.
-    # In caso di errore di connessione, CatalogClient.refresh_service() logga già
-    # un warning e restituisce None, quindi qui ci limitiamo a riprovare al ciclo
-    # successivo senza interrompere il thread. (Es06 - Requisiti 4 e 5)
+    ## Funzione privata che esegue un ciclo infinito di refresh del servizio sul Catalog ogni refresh_interval secondi. Se il refresh fallisce, verrà riprovato al prossimo ciclo.
     def _refresh_loop(self):
         while True:
-            time.sleep(self.REFRESH_INTERVAL)
-            result = self._catalog_client.refresh_service(self.SERVICE_ID)
+            time.sleep(self.refresh_interval)
+            result = self._catalog_client.refresh_service(self.service_id)
             if not isinstance(result, int):  # Se il risultato non è un codice di errore, consideriamo il refresh riuscito
-                print(f"[CatalogClient] Refresh di '{self.SERVICE_ID}' eseguito con successo: {result}")
+                print(f"[GestioneCatalog] Refresh di '{self.service_id}' eseguito con successo: {result}")
             else:
-                print(f"[CatalogClient] WARNING: refresh di '{self.SERVICE_ID}' non riuscito. Verrà riprovato al prossimo ciclo. - Status code: {result}")
+                print(f"[GestioneCatalog] WARNING: refresh di '{self.service_id}' non riuscito. Verrà riprovato al prossimo ciclo. - Status code: {result}")
 
-    # ── REST HANDLERS ────────────────────────────────────────────────────────
+
+    ### GESTIONE DELLE RICHIESTE REST ###
 
     ## Funzione che gestisce le richieste GET, in base alla presenza o meno di parametri e alla loro tipologia (URI o query parameters) decide quale funzione chiamare per ottenere i dati richiesti
     def GET(self, *uri, **params):
-        ## ESERCIZIO 1
+        # ESERCIZIO 1
         if(len(uri) == 0 and len(params) != 0):
             keys = list(params.keys())
             if (len(keys) == 1 and keys[0] == "room"):
@@ -142,7 +143,7 @@ class SmartHomeSensorService(object):
             else:
                 raise cherrypy.HTTPError(400, "Bad request: Invalid query parameters. Valid parameters are 'room' and 'sens'. Example: ?room=living_room&sens=temperature")
 
-        ## ESERCIZIO 2
+        # ESERCIZIO 2
         elif(len(params) == 0):
             if(len(params) == 0 and len(uri)==0):
                 response = self.get_allSens()
@@ -154,6 +155,9 @@ class SmartHomeSensorService(object):
                 raise cherrypy.HTTPError(400, "Bad request: Invalid URI format. Valid formats are /sensors/, /sensors/{room}, /sensors/{room}/{sens}. Example: /sensors/living_room/temperature")
 
         return json.dumps(response).encode("utf-8")
+
+
+    ### UTILITIES ###
 
     ## Funzione per inizializzare i sensori con valori random, utile per la simulazione
     def InitSens(self):
@@ -248,5 +252,3 @@ class SmartHomeSensorService(object):
         }
         self.send_log(room, sens, self.rooms_sens[room][sens])
         return response
-
-
