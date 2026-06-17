@@ -5,6 +5,7 @@ import paho.mqtt.client as PahoMQTT
 
 #TODO: dare un occhiata a gestione versione mqtt, tolta gestione in es09
 #TODO: da rivedere chiedere chi lo ha fatto, se mio è solo generato e non testato
+#TODO NON DOVREBBE BASARSI SULL'ES04 SENZA RIFARE TUTTO DA CAPO ??????????????????
 
 # --- NUOVA CLASSE SUBSCRIBER MQTT INTEGRATA PER L'ESERCIZIO 12 ---
 class MQTTSubscriber:

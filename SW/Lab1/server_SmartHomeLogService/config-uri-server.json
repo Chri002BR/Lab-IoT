@@ -1,4 +1,4 @@
 {
-  "indirizzo": "0.0.0.0",
-  "porta": "9092"
+  "server_address": "0.0.0.0",
+  "server_port": "9092"
 }

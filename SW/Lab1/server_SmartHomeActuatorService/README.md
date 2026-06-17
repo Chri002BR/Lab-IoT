@@ -14,7 +14,7 @@ Il file JSON deve contenere le seguenti chiavi, valorizzate appropriatamente:
 ```json
 {
   "server_address": "0.0.0.0",
-  "server_port": "9090",
+  "server_port": "9091",
   "url_log": "http://127.0.0.1:9092/log/",
   "url_catalog": "http://localhost:9093/catalog/"
 }
