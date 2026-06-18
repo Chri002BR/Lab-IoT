@@ -8,18 +8,19 @@
       "id": "ArduinoGroup14_arduino_temp",
       "description": "Temperature reading and LED driving",
       "resources": [
-        "temperature",
-        "LED"
+        "led",
+        "temperature"
       ],
       "mqtt": {
         "ip": "broker.hivemq.com",
         "port": 1883,
-        "topic": [
-          "/tiot/group14/temperature",
-          "/tiot/group14/led"
-        ]
+        "topic": {
+          "temp_topic": "/tiot/group14/temperature",
+          "command_topic": "/tiot/group14/led",
+          "feedback_topic": "/tiot/group14/led/feedback"
+        }
       },
-      "insert_timestamp": 1781776468.7014103
+      "insert_timestamp": 1781787232.0304298
     }
   ],
   "services": []

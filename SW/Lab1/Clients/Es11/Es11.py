@@ -5,10 +5,12 @@ import requests
 import paho.mqtt.client as mqtt
 from pathlib import Path
 
+#TODO: modificare i commenti di gemini
+
 # Configurazione Broker MQTT
 BROKER_MQTT = "broker.hivemq.com"  
 PORTA_MQTT = 1883
-ID_DISPOSITIVO = "MQTT_Command_Publisher_TeamX"
+ID_DISPOSITIVO = "MQTT_Command_Publisher_Team14"
 
 class ActuatorPublisher:
     def __init__(self):
@@ -22,7 +24,7 @@ class ActuatorPublisher:
         try:
             with open(uri_path, "r") as f:
                 config = json.load(f)
-            self.CATALOG_BASE_URL = config.get("url_catalog", "http://localhost:9093/catalog")
+            self.CATALOG_BASE_URL = config.get("uri_catalog", "http://localhost:9093/catalog")
         except FileNotFoundError:
             self.CATALOG_BASE_URL = "http://localhost:9093/catalog"
 
@@ -33,6 +35,7 @@ class ActuatorPublisher:
             "id": ID_DISPOSITIVO,
             "description": "MQTT Actuator Command Publisher Node",
             "resources": ["attuatori"]
+            #TODO: cos'è attuatori?
         }
 
         while self.running:
@@ -60,15 +63,14 @@ class ActuatorPublisher:
             if response.status_code == 200:
                 dispositivi = response.json() 
                 self.dispositivi_scoperti.clear()
-                
                 for dev in dispositivi:
                     # Adattamento per la struttura del tuo catalogo: i topic sono dentro l'oggetto "mqtt"
                     mqtt_info = dev.get("mqtt", {})
-                    if "command_topic" in mqtt_info and "feedback_topic" in mqtt_info:
+                    if "command_topic" in mqtt_info["topic"] and "feedback_topic" in mqtt_info["topic"]:
                         self.dispositivi_scoperti[dev["id"]] = {
                             "tipo": dev.get("resources", ["generico"])[0],
-                            "command_topic": mqtt_info["command_topic"],
-                            "feedback_topic": mqtt_info["feedback_topic"]
+                            "command_topic": mqtt_info["topic"]["command_topic"],
+                            "feedback_topic": mqtt_info["topic"]["feedback_topic"]
                         }
                 print(f"[CATALOGO] Scoperti {len(self.dispositivi_scoperti)} attuatori reali pronti al controllo.")
                 
@@ -76,14 +78,15 @@ class ActuatorPublisher:
                     for dev_id, info in self.dispositivi_scoperti.items():
                         self.client.subscribe(info["feedback_topic"])
             else:
-                print(f"[REST - ERRORE] Errore di risposta dal catalogo: {response.status_code}")
+                print(f"[REST] Errore di risposta dal catalogo: {response.status_code}")
                 
         except Exception as e:
-            print(f"[REST - ERRORE] Errore di connessione al catalogo durante la scoperta: {e}")
+            print(f"[REST] Errore di connessione al catalogo durante la scoperta: {e}")
 
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if reason_code == 0:
             print(f"[MQTT] Connesso con successo al Broker: {BROKER_MQTT}")
+            #TODO: si vede che è scritto da gemini
             for dev_id, info in self.dispositivi_scoperti.items():
                 feedback_t = info["feedback_topic"]
                 client.subscribe(feedback_t)
@@ -118,6 +121,7 @@ class ActuatorPublisher:
     def interfaccia_utente(self):
         time.sleep(1) 
         while self.running:
+            #TODO: cos'è??????
             print("\n" + "="*45)
             if not self.dispositivi_scoperti:
                 print(" NESSUN DISPOSITIVO RILEVATO DAL CATALOGO.")
@@ -147,7 +151,7 @@ class ActuatorPublisher:
                 chiavi = list(self.dispositivi_scoperti.keys())
                 dev_selezionato = chiavi[int(scelta) - 1]
                 tipo_dev = self.dispositivi_scoperti[dev_selezionato]["tipo"]
-                
+                print(self.dispositivi_scoperti[dev_selezionato])
                 print(f"\nStai controllando l'attuatore: {dev_selezionato}")
                 if tipo_dev in ["led", "luce"]:
                     valore = input("Inserisci comando (ON / OFF): ").strip().upper()
