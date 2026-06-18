@@ -95,7 +95,8 @@ class ActuatorPublisher:
                     "endpoint": servizio.get("endpoint", "")
                 }
                 print(f"[CATALOGO] Scoperto 1 servizio reale pronto al controllo.")
-                
+                # Appena ottenuto l'endpoint, interrogo subito il servizio con una GET per popolare la struttura interna con lo stato attuale degli attuatori
+                self.aggiorna_stato_servizio("smart-home-actuator-service")
             else:
                 print(f"[REST] Errore di risposta dal catalogo: {response.status_code}")
                 
@@ -126,21 +127,106 @@ class ActuatorPublisher:
         if device_id not in self.dispositivi_scoperti:
             print("[ERRORE] Dispositivo non trovato.")
             return
+        # 1. Recupero il topic di comando dal dizionario
+        topic = self.dispositivi_scoperti[device_id].get("command_topic")
+        if not topic:
+            print("[ERRORE] Nessun command_topic disponibile per questo dispositivo.")
+            return
 
-        topic = self.dispositivi_scoperti[device_id]["command_topic"]
+        # 2. Costruisco il payload. 
+        # Trasformo "ON"/"OFF" in un booleano (True/False)
+        value = (valore == "ON")
+        
+        # Struttura in stile SenML
         payload_comando = {
-            "sender": ID_DISPOSITIVO,
-            "timestamp": time.time(),
-            "target": device_id,
-            "command": valore
+            "bn" : "ArduinoGroup14",
+            "e": [
+                {
+                    "n": "led",
+                    "v": value
+                }
+            ]
         }
         
+        # 3. Converto in stringa JSON
         stringa_json = json.dumps(payload_comando)
-        self.client.publish(topic, stringa_json)
-        print(f"[MQTT] Comando inviato a {topic}: {stringa_json}")
+        
+        # 4. Pubblico il messaggio tramite il client MQTT
+        try:
+            self.client.publish(topic, stringa_json)
+            print(f"[MQTT] Comando pubblicato con successo sul topic: {topic}")
+            print(f"[MQTT] Payload: {stringa_json}")
+        except Exception as e:
+            print(f"[MQTT - ERRORE] Impossibile pubblicare il messaggio: {e}")
+
+        
+    def gestisci_servizio_rest(self, dev_id):
+        """Gestisce l'interazione REST con il servizio Es03 (smart-home-actuator-service):
+        aggiorna lo stato corrente con una GET e, se l'utente lo desidera, invia una PUT
+        per modificare un attuatore. NB: Es03 espone solo GET e PUT, non POST."""
+ 
+        info = self.dispositivi_scoperti.get(dev_id)
+ 
+        endpoint = info["endpoint"]
+        endpoint = endpoint.replace("0.0.0.0", "127.0.0.1")
+        if not endpoint.startswith("http"):
+            endpoint = "http://" + endpoint
+ 
+        stanza = input("Inserisci la stanza (living_room / kitchen / bedroom): ").strip()
+        sensore = input("Inserisci l'attuatore (thermostat / lights / blinds): ").strip()
+ 
+        if sensore == "thermostat":
+            valore_raw = input("Nuova temperatura desiderata (10-30): ").strip()
+            try:
+                valore = float(valore_raw)
+            except ValueError:
+                print("[ERRORE] Valore non numerico.")
+                return
+            unita = "Cel"
+        elif sensore == "lights":
+            valore_raw = input("Nuovo stato luci (ON / OFF): ").strip().upper()
+            if valore_raw not in ("ON", "OFF"):
+                print("[ERRORE] Valore non valido, usare ON o OFF.")
+                return
+            valore = (valore_raw == "ON")
+            unita = "bool"
+        elif sensore == "blinds":
+            valore_raw = input("Nuovo livello apertura tapparelle (0-100): ").strip()
+            try:
+                valore = float(valore_raw)
+            except ValueError:
+                print("[ERRORE] Valore non numerico.")
+                return
+            unita = "pct"
+        else:
+            print("[ERRORE] Attuatore non riconosciuto.")
+            return
+ 
+        payload = {
+            "bn": stanza + "/",
+            "e": [
+                {
+                    "n": sensore,
+                    "v": valore,
+                    "u": unita
+                }
+            ]
+        }
+        
+        # Invio la richiesta PUT tramite REST 
+        try:
+            print(f"[REST] Invio comando PUT a {endpoint}...")
+            response = requests.put(endpoint, json=payload, timeout=5)
+            if response.status_code == 200:
+                print(f"[REST] Comando applicato con successo!")
+            else:
+                print(f"[REST] Errore nell'invio del comando. Codice: {response.status_code}")
+        except Exception as e:
+            print(f"[REST - ERRORE] Impossibile inviare il comando: {e}")
+
 
     def interfaccia_utente(self):
-        time.sleep(1) 
+        # time.sleep(1) # Da togliere ??
         while self.running:
             #TODO: cos'è??????
             print("\n" + "="*45)
@@ -172,21 +258,54 @@ class ActuatorPublisher:
                 chiavi = list(self.dispositivi_scoperti.keys())
                 dev_selezionato = chiavi[int(scelta) - 1]
                 tipo_dev = self.dispositivi_scoperti[dev_selezionato]["tipo"]
+
                 print(self.dispositivi_scoperti[dev_selezionato])
                 print(f"\nStai controllando l'attuatore: {dev_selezionato}")
+
                 if tipo_dev in ["led", "luce"]:
                     valore = input("Inserisci comando (ON / OFF): ").strip().upper()
-                elif tipo_dev == "thermostat":
-                    valore = input("Inserisci la temperatura desiderata (es. 22.5): ").strip()
-                elif tipo_dev == "blinds":
-                    valore = input("Inserisci livello apertura (es. APERTA / CHIUSA / 50%): ").strip()
+                    self.invia_comando(dev_selezionato, valore)
+                    # time.sleep(1)  # Non so se utile
+                elif tipo_dev == "servizio":
+                    self.gestisci_servizio_rest(dev_selezionato)
+                    # time.sleep(1) # Non so se utile
+                    continue
                 else:
                     raise ValueError("Tipo di dispositivo non riconosciuto per il comando.")
                 
-                self.invia_comando(dev_selezionato, valore)
-                time.sleep(1) 
             except (ValueError, IndexError):
                 print("[ERRORE] Selezione non valida. Riprova.")
+
+    def aggiorna_stato_servizio(self, dev_id):
+        """Invia una GET al servizio REST Es03 (smart-home-actuator-service) e salva
+        il risultato nella struttura interna self.dispositivi_scoperti, sotto la
+        chiave 'stato'."""
+        info = self.dispositivi_scoperti.get(dev_id)
+        if not info or not info.get("endpoint"):
+            print("[ERRORE] Endpoint del servizio non disponibile.")
+            return None
+ 
+        endpoint = info["endpoint"]
+        endpoint = endpoint.replace("0.0.0.0", "127.0.0.1")
+        if not endpoint.startswith("http"):
+            endpoint = "http://" + endpoint
+ 
+        try:
+            response = requests.get(endpoint, timeout=5)
+            if response.status_code == 200:
+                stato = response.json()
+                # Salvataggio nella struttura interna
+                info["stato"] = stato
+                print(f"[REST] Stato attuale ricevuto da '{dev_id}':")
+                print(json.dumps(stato, indent=2))
+                return stato
+            else:
+                print(f"[REST] Errore nella richiesta GET a {endpoint}: status code {response.status_code}")
+                return None
+        except Exception as e:
+            print(f"[REST - ERRORE] Impossibile contattare il servizio a {endpoint}: {e}")
+            return None
+
 
     def start(self):
         self.scopri_dispositivi()

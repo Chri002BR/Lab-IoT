@@ -20,7 +20,7 @@
           "feedback_topic": "/tiot/group14/led/feedback"
         }
       },
-      "insert_timestamp": 1781793714.5067847
+      "insert_timestamp": 1781800802.9906838
     }
   ],
   "services": [
@@ -33,7 +33,13 @@
         "lights",
         "blinds"
       ],
-      "insert_timestamp": 1781793707.808981
+      "insert_timestamp": 1781800794.407864
+    },
+    {
+      "id": "MQTT_Command_Publisher_Team14",
+      "description": "MQTT Actuator Command Publisher Node",
+      "resources": [],
+      "insert_timestamp": 1781800757.0881734
     }
   ]
 }
