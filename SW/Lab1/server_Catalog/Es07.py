@@ -3,6 +3,8 @@ import paho.mqtt.client as mqtt
 import json
 import time
 
+#TODO: viene praticamente copiata la classe Catalog, non sarebbe meglio usare direttamente i suoi metodi?
+
 GROUP_ID = "group14" 
 
 class MQTTCatalogBridge(object):
@@ -16,9 +18,9 @@ class MQTTCatalogBridge(object):
         self.client=mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 
         #topics declaration
-        self.registration_topic = f"tiot/{GROUP_ID}/catalog/register" 
-        self.response_topic_prefix = f"tiot/{GROUP_ID}/catalog/register/response/"
-        self.query_topic = f"tiot/{GROUP_ID}/catalog/query"
+        self.registration_topic = f"/tiot/{GROUP_ID}/catalog/register" 
+        self.response_topic_prefix = f"/tiot/{GROUP_ID}/catalog/register/response/"
+        self.query_topic = f"/tiot/{GROUP_ID}/catalog/query"
 
         
         self.client.on_connect=self.connect 
@@ -37,13 +39,13 @@ class MQTTCatalogBridge(object):
 
         if code==0:
 
-            print(f"Connected to {self.broker_host}")
-            self.client.subscribe(self.registration_topic) #gestisce messaggi pubblicati su questo topic
+            print(f"[MQTT] Connected to {self.broker_host}")
+            self.client.subscribe(self.registration_topic)
             self.client.subscribe(self.query_topic)
 
         else: 
 
-            print(f"Connection failed with code {code}")
+            print(f"[MQTT] Connection failed with code {code}")
 
     def message(self, client, userdata, msg): #msg.topic e msg.payload
         # JSON format 
@@ -63,6 +65,8 @@ class MQTTCatalogBridge(object):
         try:
 
             body=json.loads(msg.payload.decode("utf-8"))
+            print(f"[MQTT] Ricevuto messaggio su {msg.topic}")
+            print(f"[MQTT] Payload: {body}")
 
             if msg.topic==self.registration_topic:
 
@@ -77,7 +81,7 @@ class MQTTCatalogBridge(object):
                 if item_type not in ("services", "devices"):
                     raise ValueError(f"error: Field 'type' should be 'services' or 'devices'")
 
-                del body["type"] #so we don't insert it in the file
+                del body["type"]
                 body["insert_timestamp"] = time.time()
         
                 with self.catalog._lock:
@@ -93,7 +97,7 @@ class MQTTCatalogBridge(object):
                         # New entry: add it
                         self.catalog._data[item_type].append(body)
                         self.catalog._save()
-                        print(f"[POST] Registered new {item_type[:-1]} '{body['id']}'")
+                        print(f"[MQTT] Registered new {item_type[:-1]} '{body['id']}'")
 
                 response_topic = f"{self.response_topic_prefix}{body['id']}"
                 ack_message = {

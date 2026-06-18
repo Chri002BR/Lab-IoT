@@ -174,3 +174,8 @@ class ActuatorPublisher:
         print("Chiusura dell'applicazione in corso...")
         self.client.loop_stop()
         self.client.disconnect()
+
+
+if __name__ == "__main__":
+    publisher = ActuatorPublisher()
+    publisher.start()

@@ -3,6 +3,24 @@
     "ip": "broker.hivemq.com",
     "port": 1883
   },
-  "devices": [],
+  "devices": [
+    {
+      "id": "ArduinoGroup14_arduino_temp",
+      "description": "Temperature reading and LED driving",
+      "resources": [
+        "temperature",
+        "LED"
+      ],
+      "mqtt": {
+        "ip": "broker.hivemq.com",
+        "port": 1883,
+        "topic": [
+          "/tiot/group14/temperature",
+          "/tiot/group14/led"
+        ]
+      },
+      "insert_timestamp": 1781776468.7014103
+    }
+  ],
   "services": []
 }

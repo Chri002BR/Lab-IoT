@@ -6,6 +6,21 @@ import SW.Lab1.server_Catalog.Es07 as Es07
 # PERCHE' NO ???????????????? NO NBASTA RENDERE PIù STRINGENTE IL CONTROLLO DEL BODY?????????????????
 #TODO: modificare da AI (COMMENTI, OUTPUT, IL CODICE E' DIFFICILMENTE LEGGIBILE)
 
+    # Catalogo di default
+DEFAULT_CATALOG = {
+    "broker": {
+        "ip":   "broker.hivemq.com",
+        "port": 1883
+    },
+    "devices":  [],
+    "services": []
+}
+
+    # Costanti per la gestione del file di persistenza e della pulizia delle entry scadute
+CATALOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "catalog.json")
+CLEANUP_INTERVAL = 60    # seconds between each cleanup pass
+STALE_THRESHOLD  = 120   # seconds before a registration is considered stale
+
 class Catalog(object):
 
 
@@ -13,21 +28,6 @@ class Catalog(object):
 
 
     exposed = True
-
-    # Costanti per la gestione del file di persistenza e della pulizia delle entry scadute
-    CATALOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "catalog.json")
-    CLEANUP_INTERVAL = 60    # seconds between each cleanup pass
-    STALE_THRESHOLD  = 120   # seconds before a registration is considered stale
-
-    # Catalogo di default
-    DEFAULT_CATALOG = {
-        "broker": {
-            "ip":   "broker.hivemq.com",
-            "port": 1883
-        },
-        "devices":  [],
-        "services": []
-    }
 
     def __init__(self):
         self._lock = threading.Lock() # Lock per la persistenza (da chiamare prima di fare accessi al file). Serve a evitare che due thread (es. main thread + cleanup thread) accedano contemporaneamente al file causando corruzione dei dati o eccezioni.
@@ -38,9 +38,9 @@ class Catalog(object):
         print("[Catalog] Inizializzato. In ascolto su /catalog ...")
 
         # Inizializziamo il bridge MQTT passando le informazioni del broker (che possono essere caricate da catalog.json o usare quelle di default)
-        broker_info = self._data.get("broker", {DEFAULT_CATALOG["broker"]})
-        broker_host = DEFAULT_CATALOG["broker"]["ip"]
-        broker_port = DEFAULT_CATALOG["broker"]["port"]
+        broker_info = self._data.get("broker", DEFAULT_CATALOG["broker"])
+        broker_host = broker_info["ip"]
+        broker_port = broker_info["port"]
 
         # Istanziamo il Bridge passando 'self' (questa istanza di Catalog)
         self.mqtt_bridge = Es07.MQTTCatalogBridge(
