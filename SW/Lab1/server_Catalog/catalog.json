@@ -12,7 +12,27 @@
         "log",
         "storage"
       ],
-      "insert_timestamp": 1781797624.4226122
+      "mqtt": {
+        "ip": "broker.hivemq.com",
+        "port": 1883,
+        "topic": {
+          "temp_topic": "/tiot/group14/temperature",
+          "command_topic": "/tiot/group14/led",
+          "feedback_topic": "/tiot/group14/led/feedback"
+        }
+      },
+      "insert_timestamp": 1781793714.5067847
+    },
+    {
+      "id": "smart-home-actuator-service",
+      "description": "Servizio REST che espone il controllo degli attuatori della smart home (termostato, luci, tapparelle)",
+      "endpoint": "0.0.0.0:9091/actuators",
+      "resources": [
+        "thermostat",
+        "lights",
+        "blinds"
+      ],
+      "insert_timestamp": 1781793707.808981
     }
   ]
 }

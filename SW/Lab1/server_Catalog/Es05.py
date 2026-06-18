@@ -99,12 +99,12 @@ class Catalog(object):
 
     ### UTILITIES ###
 
- 
+
     ## Funzione statica che converte un dizionario Python in una JSON response
     @staticmethod
     def _json_response(data, status=200):
         return json.dumps(data).encode("utf-8")
- 
+
     ## Funzione privata che cerca un entry per id in una sezione (devices o services) e la restituisce, oppure None se non trovata
     def _find(self, section, item_id):
         return next(
