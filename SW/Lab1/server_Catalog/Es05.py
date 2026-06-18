@@ -1,46 +1,46 @@
 import paho.mqtt.client as mqtt
 import threading, time, json, cherrypy, os
-
 import SW.Lab1.server_Catalog.Es07 as Es07
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CATALOG_FILE = os.path.join(SCRIPT_DIR, "catalog.json")
-CLEANUP_INTERVAL = 60    # seconds between each cleanup pass
-STALE_THRESHOLD  = 120   # seconds before a registration is considered stale
-
-
-# Da rivedere punto 3 campi opzionali degli endpoint e MQTT (ip,...) (non dovrebbero essere gestiti da qui, ma solo salvati nel Json)
-#TODO: modificare da AI (commenti generati)
-
-# ── Default catalog structure (used when catalog.json does not exist) ────────
-
-DEFAULT_CATALOG = {
-    "broker": {
-        "ip":   "broker.hivemq.com",
-        "port": 1883
-    },
-    "devices":  [],
-    "services": []
-}
-
-
+#TODO: Da rivedere punto 3 campi opzionali degli endpoint e MQTT (ip,...) (non dovrebbero essere gestiti da qui, ma solo salvati nel Json)
+# PERCHE' NO ???????????????? NO NBASTA RENDERE PIù STRINGENTE IL CONTROLLO DEL BODY?????????????????
+#TODO: modificare da AI (COMMENTI, OUTPUT, IL CODICE E' DIFFICILMENTE LEGGIBILE)
 
 class Catalog(object):
-    exposed = True  # required for MethodDispatcher
+
+
+    ### INIZIALIZZAZIONE ###
+
+
+    exposed = True
+
+    # Costanti per la gestione del file di persistenza e della pulizia delle entry scadute
+    CATALOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "catalog.json")
+    CLEANUP_INTERVAL = 60    # seconds between each cleanup pass
+    STALE_THRESHOLD  = 120   # seconds before a registration is considered stale
+
+    # Catalogo di default
+    DEFAULT_CATALOG = {
+        "broker": {
+            "ip":   "broker.hivemq.com",
+            "port": 1883
+        },
+        "devices":  [],
+        "services": []
+    }
 
     def __init__(self):
-        # threading.Lock protects _data and catalog.json from concurrent access
-        self._lock = threading.Lock()   # Lock per la persistenza (da chiamare prima di fare accessi al file)
+        self._lock = threading.Lock() # Lock per la persistenza (da chiamare prima di fare accessi al file). Serve a evitare che due thread (es. main thread + cleanup thread) accedano contemporaneamente al file causando corruzione dei dati o eccezioni.
         self._data = self._load()
 
-        # Background cleanup thread (daemon=True so it dies with the process)
+        # Thread per la pulizia delle entry scadute
         threading.Thread(target=self._cleanup_loop, daemon=True).start()
-        print("[Catalog] Started. Listening on http://localhost:9093/catalog")
+        print("[Catalog] Inizializzato. In ascolto su /catalog ...")
 
-        # per far partire il bridge con questa classe
-        broker_info = self._data.get("broker", {"ip": "broker.hivemq.com", "port": 1883})
-        broker_host = "broker.hivemq.com"
-        broker_port = 1883
+        # Inizializziamo il bridge MQTT passando le informazioni del broker (che possono essere caricate da catalog.json o usare quelle di default)
+        broker_info = self._data.get("broker", {DEFAULT_CATALOG["broker"]})
+        broker_host = DEFAULT_CATALOG["broker"]["ip"]
+        broker_port = DEFAULT_CATALOG["broker"]["port"]
 
         # Istanziamo il Bridge passando 'self' (questa istanza di Catalog)
         self.mqtt_bridge = Es07.MQTTCatalogBridge(
@@ -51,38 +51,32 @@ class Catalog(object):
         # Avviamo il bridge (che farà partire internamente il secondo Thread tramite loop_start())
         self.mqtt_bridge.start()
 
-    # ── Persistence helpers ──────────────────────────────────────────────────
- 
+
+    ### GESTIONE PERSISTENZA ###
+
+
+    ## Funzione privata che carica il catalogo da disco (catalog.json) o restituisce la struttura di default se il file non esiste
     def _load(self):
-        """
-        Load catalog.json from disk.
-        If the file does not exist, return the default structure.
-        """
         if os.path.exists(CATALOG_FILE):
             with open(CATALOG_FILE, "r") as f:
                 data = json.load(f)
-            print(f"[Catalog] Loaded {CATALOG_FILE} from disk.")
+            print(f"[Catalog] Caricato {CATALOG_FILE} da disco.")
             return data
  
-        print(f"[Catalog] {CATALOG_FILE} not found, starting with empty catalog.")
+        print(f"[Catalog] {CATALOG_FILE} non trovato, inizializzato con il catalogo di default.")
         return json.loads(json.dumps(DEFAULT_CATALOG))  
 
+    ## Funzione privata che salva il catalogo su disco (catalog.json)
     def _save(self):
-        """
-        Write the current state to catalog.json.
-        Must always be called while self._lock is held.
-        """
         with open(CATALOG_FILE, "w") as f:
             json.dump(self._data, f, indent=2)
 
-    # ── Cleanup thread ───────────────────────────────────────────────────────
- 
+
+    ### GESTIONE THREAD ###
+
+
+    ## Funzione privata che rimuove le entry scadute dal catalogo. Viene eseguita ogni CLEANUP_INTERVAL secondi su un thread separato
     def _cleanup_loop(self):
-        """
-        Runs every CLEANUP_INTERVAL seconds.
-        Removes devices and services whose insert_timestamp is older than
-        STALE_THRESHOLD seconds (i.e. they missed their periodic refresh).
-        """
         while True:
             time.sleep(CLEANUP_INTERVAL)
             now = time.time()
@@ -102,38 +96,40 @@ class Catalog(object):
  
                 self._save()
 
-    # ── Internal helpers ─────────────────────────────────────────────────────
+
+    ### UTILITIES ###
+
  
+    ## Funzione statica che converte un dizionario Python in una JSON response
     @staticmethod
     def _json_response(data, status=200):
-        """Return JSON string."""
         return json.dumps(data).encode("utf-8")
  
+    ## Funzione privata che cerca un entry per id in una sezione (devices o services) e la restituisce, oppure None se non trovata
     def _find(self, section, item_id):
-        """Return the entry with the given id in section, or None."""
         return next(
-            (x for x in self._data[section] if x["id"] == item_id),
-            None
+            (x for x in self._data[section] if x["id"] == item_id), None
         )
-    
 
-    # ── GET ──────────────────────────────────────────────────────────────────
+
+    ### GESTIONE DELLE RICHIESTE REST ###
+
  
+    ## Funzione che gestisce le richieste GET
     def GET(self, *uri, **params):
-        """
-        URI patterns:
-          GET /catalog                -> full catalog (broker + devices + services)
-          GET /catalog/broker         -> MQTT broker info
-          GET /catalog/devices        -> list of all devices
-          GET /catalog/devices/<id>   -> single device
-          GET /catalog/services       -> list of all services
-          GET /catalog/services/<id>  -> single service
-        """
+        # Pattern URI:
+        #   GET /catalog -> ritorna l'intero catalogo (broker, devices, services)
+        #   GET /catalog/broker -> ritorna le informazioni del broker
+        #   GET /catalog/devices -> ritorna la lista di tutti i devices
+        #   GET /catalog/devices/<id> -> ritorna un singolo device
+        #   GET /catalog/services -> ritorna la lista di tutti i services
+        #   GET /catalog/services/<id> -> ritorna un singolo service
+
         with self._lock:
             # Snapshot so we release the lock quickly
             data = json.loads(json.dumps(self._data))
  
-        # /catalog  (no extra segments)
+        # /catalog
         if len(uri) == 0:
             return self._json_response(data)
  
@@ -157,32 +153,23 @@ class Catalog(object):
             return self._json_response(item)
  
         raise cherrypy.HTTPError(404, f"error: Unknown section '{section}'")
-    
-    # ── POST ─────────────────────────────────────────────────────────────────
  
+    ## Funzione che gestisce le richieste POST
     def POST(self, *uri, **params):
-        """
-        Register (or refresh) a device or service.
-        URI: POST /catalog/devices  or  POST /catalog/services
- 
-        Body (JSON):
+        """ esempio body JSON:
           {
-            "id":          "sensor-01",
+            "id": "sensor-01",
             "description": "Living room temperature sensor",
-            "endpoint":    "http://localhost:8081/sensors",   <- optional
-            "mqtt": {                                          <- optional
-              "ip":    "iot.eclipse.org",
-              "port":  1883,
-              "topic": "/tiot/group14/living_room/temperature"
-            },
+            "endpoint": "http://localhost:9090/sensors", #OPZIONALE
+            "mqtt": { # OPZIONALE
+                "ip": "broker.hivemq.com",
+                "port": 1883,
+                "topic": "/tiot/group14/living_room/temperature"
+                },
             "resources": ["temperature", "humidity"]
           }
- 
-        Behavior:
-          - If id already exists -> update insert_timestamp (refresh)
-          - If id is new         -> create new record
-        The insert_timestamp is always set by the Catalog, never by the client.
         """
+
         if len(uri) < 1 or uri[0] not in ("devices", "services"):
             raise cherrypy.HTTPError(400, f"error: Use /catalog/devices or /catalog/services")
  
@@ -222,21 +209,14 @@ class Catalog(object):
                 return self._json_response(
                     {"status": "registered", "id": body["id"]}, 201
                 )
-            
-    # ── PUT ──────────────────────────────────────────────────────────────────
  
+    ## Funzione che gestisce le richieste PUT. Esegue il refresh del timestamp di un device o service esistente
     def PUT(self, *uri, **params):
-        """
-        Refresh the insert_timestamp of an existing device or service.
-        URI: PUT /catalog/devices/<id>  or  PUT /catalog/services/<id>
- 
-        Clients must call this every ~60 s to keep their registration alive.
-        """
         if len(uri) < 2:
             raise cherrypy.HTTPError(400, f"error: Use /catalog/devices/<id> or /catalog/services/<id>")
-        
  
-        section, item_id = uri[0], uri[1]
+        section = uri[0]
+        item_id = uri[1]
  
         if section not in ("devices", "services"):
             raise cherrypy.HTTPError(400, f"error: Unknown section '{section}'")
@@ -252,13 +232,8 @@ class Catalog(object):
         print(f"[PUT] Refreshed {section[:-1]} '{item_id}'")
         return self._json_response({"status": "refreshed", "id": item_id})
  
-    # ── DELETE ───────────────────────────────────────────────────────────────
- 
+    ##   ## Funzione che gestisce le richieste DELETE. Rimuove un device o service esistente
     def DELETE(self, *uri, **params):
-        """
-        Remove a device or service by id.
-        URI: DELETE /catalog/devices/<id>  or  DELETE /catalog/services/<id>
-        """
         if len(uri) < 2:
             raise cherrypy.HTTPError(400, f"error: Use /catalog/devices/<id> or /catalog/services/<id>")
         

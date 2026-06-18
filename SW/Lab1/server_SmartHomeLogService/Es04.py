@@ -4,13 +4,18 @@ import time
 
 
 class SmartHomeLogService(object):
+
+
+    ### INIZIALIZZAZIONE ###    
+
+
     exposed = True
-    
     id=0
     logs = []
 
-    def AddLog(self, value):
-        self.logs.append(value)
+
+    ### GESTIONE DELLE RICHIESTE REST ###
+
 
     ## Funzione per ricevere un log da un sensore o attuatore e aggiungerlo alla lista dei log
     def POST(self, *uri, **params):
@@ -93,6 +98,15 @@ class SmartHomeLogService(object):
         except:
             raise cherrypy.HTTPError(500, "Server error")
 
+
+    ### utilities ###
+
+    
+    ## Funzione per aggiungere un log alla lista dei log
+    def AddLog(self, value):
+        self.logs.append(value)
+
+    ## Funzione per filtrare i log in base alla stanza
     def get_logs_by_room(self, paramLogs, room):
         response = []
         for log in paramLogs:
@@ -100,6 +114,7 @@ class SmartHomeLogService(object):
                 response.append(log)
         return response
     
+    ## Funzione per filtrare i log in base al timestamp
     def get_logs_by_time(self, paramLogs, since):
         response = []
         for log in paramLogs:
