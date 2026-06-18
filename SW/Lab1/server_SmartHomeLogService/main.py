@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     log_service_instance = SmartHomeLogService()
 
-    cherrypy.tree.mount(SmartHomeLogService(), '/log', conf)
+    cherrypy.tree.mount(log_service_instance, '/log', conf)
 
     MQTT_BROKER = "broker.hivemq.com" 
     MQTT_PORT = 1883
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
     # 5. Avvio del Server
     # Carico il file contenente le config per il server
-    uri_path = Path(__file__) / "config-uri-server.json"
+    uri_path = Path(__file__).parent / "config-uri-server.json"
     try:
         with open(uri_path, "r") as f:
             config = json.load(f)
