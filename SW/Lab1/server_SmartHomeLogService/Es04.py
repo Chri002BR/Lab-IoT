@@ -2,6 +2,7 @@ import cherrypy
 import json
 import time
 
+#TODO: NON è IMPLEMENTATO IL REQUISITO DELL'ESERCIZIO 6, IL LOGGER NON SI CONNETTE AL CATALOG!!!!!!!!!!!!!!!!!!!!!!!!!
 
 class SmartHomeLogService(object):
 
