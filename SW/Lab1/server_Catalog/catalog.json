@@ -3,25 +3,16 @@
     "ip": "broker.hivemq.com",
     "port": 1883
   },
-  "devices": [
+  "devices": [],
+  "services": [
     {
-      "id": "ArduinoGroup14_arduino_temp",
-      "description": "Temperature reading and LED driving",
+      "id": "smart-home-sensor-service",
+      "description": "Implementazione keep-alive per il catalog",
       "resources": [
-        "led",
-        "temperature"
+        "log",
+        "storage"
       ],
-      "mqtt": {
-        "ip": "broker.hivemq.com",
-        "port": 1883,
-        "topic": {
-          "temp_topic": "/tiot/group14/temperature",
-          "command_topic": "/tiot/group14/led",
-          "feedback_topic": "/tiot/group14/led/feedback"
-        }
-      },
-      "insert_timestamp": 1781787591.7467284
+      "insert_timestamp": 1781797601.431875
     }
-  ],
-  "services": []
+  ]
 }
