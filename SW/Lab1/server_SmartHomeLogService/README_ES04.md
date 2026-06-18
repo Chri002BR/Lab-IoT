@@ -1,4 +1,4 @@
-# Esercizi 04
+# Esercizi 04 (E SUCCESSIVE MODIFICHE DESCRITTE NELL'ESERCIZIO 06)
 
 ## Configurazione
 

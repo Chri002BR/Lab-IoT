@@ -1,8 +1,8 @@
-# Esercizi 01-02 (E SUCCESSIVE MODIFICHE)
+# Esercizi 03 (E SUCCESSIVE MODIFICHE DESCRITTE NELL'ESERCIZIO 06)
 
 ## Configurazione
 
-Il server (`Es01_02.py`, avviato tramite il relativo file `main.py`) recupera l'URI necessario per connettersi al Catalog e al Log, nonchè il porprio IP e porta, dal file di configurazione `config-uri-client.json`, che deve trovarsi nella stessa cartella degli script.
+Il server (`Es03.py`, avviato tramite il relativo file `main.py`) recupera l'URI necessario per connettersi al Catalog e al Log, nonchè il porprio IP e porta, dal file di configurazione `config-uri-client.json`, che deve trovarsi nella stessa cartella degli script.
 
 Il file JSON deve contenere le seguenti chiavi, valorizzate appropriatamente:
 - `server_address`: indirizzo IP del server stesso
@@ -14,10 +14,10 @@ Il file JSON deve contenere le seguenti chiavi, valorizzate appropriatamente:
 ```json
 {
   "server_address": "0.0.0.0",
-  "server_port": "9090",
+  "server_port": "9091",
   "url_log": "http://127.0.0.1:9092/log/",
   "url_catalog": "http://localhost:9093/catalog/"
 }
 ```
 
-Il server non utilizza il protovollo MQTT.
+Il server non utilizza il protocollo MQTT.
