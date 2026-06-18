@@ -5,7 +5,7 @@ import time
 
 #TODO: viene praticamente copiata la classe Catalog, non sarebbe meglio usare direttamente i suoi metodi?
 
-GROUP_ID = "group14" 
+GROUP_ID = "group14"
 
 class MQTTCatalogBridge(object):
 

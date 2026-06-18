@@ -34,10 +34,10 @@ class ActuatorPublisher:
         payload = {
             "id": ID_DISPOSITIVO,
             "description": "MQTT Actuator Command Publisher Node",
-            "resources": ["attuatori"]
-            #TODO: cos'è attuatori?
+            "resources": []
         }
 
+        # Si registra come service e invia keep-alive ogni 60 secondi
         while self.running:
             try:
                 url = f"{self.CATALOG_BASE_URL}/services" 
@@ -83,14 +83,35 @@ class ActuatorPublisher:
         except Exception as e:
             print(f"[REST] Errore di connessione al catalogo durante la scoperta: {e}")
 
+        # recupero l'es03
+        try:
+            url = f"{self.CATALOG_BASE_URL}/services/smart-home-actuator-service"
+            response = requests.get(url, timeout=5)
+            
+            if response.status_code == 200:
+                servizio = response.json()
+                self.dispositivi_scoperti["smart-home-actuator-service"] = {
+                    "tipo": "servizio",
+                    "endpoint": servizio.get("endpoint", "")
+                }
+                print(f"[CATALOGO] Scoperto 1 servizio reale pronto al controllo.")
+                
+            else:
+                print(f"[REST] Errore di risposta dal catalogo: {response.status_code}")
+                
+        except Exception as e:
+            print(f"[REST] Errore di connessione al catalogo durante la scoperta: {e}")
+            
+
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if reason_code == 0:
             print(f"[MQTT] Connesso con successo al Broker: {BROKER_MQTT}")
             #TODO: si vede che è scritto da gemini
             for dev_id, info in self.dispositivi_scoperti.items():
-                feedback_t = info["feedback_topic"]
-                client.subscribe(feedback_t)
-                print(f"[MQTT] Iscritto al feedback topic: {feedback_t}")
+                if "feedback_topic" in info:
+                    feedback_t = info["feedback_topic"]
+                    client.subscribe(feedback_t)
+                    print(f"[MQTT] Iscritto al feedback topic: {feedback_t}")
         else:
             print(f"[MQTT] Connessione fallita. Codice d'errore: {reason_code}")
 
@@ -155,12 +176,12 @@ class ActuatorPublisher:
                 print(f"\nStai controllando l'attuatore: {dev_selezionato}")
                 if tipo_dev in ["led", "luce"]:
                     valore = input("Inserisci comando (ON / OFF): ").strip().upper()
-                elif tipo_dev == "termostato":
+                elif tipo_dev == "thermostat":
                     valore = input("Inserisci la temperatura desiderata (es. 22.5): ").strip()
-                elif tipo_dev == "tapparella":
+                elif tipo_dev == "blinds":
                     valore = input("Inserisci livello apertura (es. APERTA / CHIUSA / 50%): ").strip()
                 else:
-                    valore = input("Inserisci comando generico: ").strip()
+                    raise ValueError("Tipo di dispositivo non riconosciuto per il comando.")
                 
                 self.invia_comando(dev_selezionato, valore)
                 time.sleep(1) 

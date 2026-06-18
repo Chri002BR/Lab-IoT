@@ -1,8 +1,6 @@
 from SW.Lab1.CatalogClient import CatalogClient
 from pathlib import Path
 
-#TODO: TESTARE!!!!!!!!!!!!!! NON è MAI STATO PROVATO
-
 if __name__ == "__main__":
 
     # Leggo l'uri del catalog dal file di config

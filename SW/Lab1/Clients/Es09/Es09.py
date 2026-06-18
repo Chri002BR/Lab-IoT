@@ -38,7 +38,7 @@ class MQTTTemperaturePublisher:
     def get_broker_from_catalog(self):
         url = f"{self.CATALOG_BASE_URL}/broker"
         print(f"URL broker: {url}")
-        
+
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
@@ -65,7 +65,8 @@ class MQTTTemperaturePublisher:
             "mqtt": {
                 "ip": self.broker_host,
                 "port": self.broker_port,
-                "topic": self.pub_topic
+                "topic": {
+                    "sensor_topic": self.pub_topic}
             }
         }
 

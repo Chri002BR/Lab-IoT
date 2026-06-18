@@ -20,8 +20,20 @@
           "feedback_topic": "/tiot/group14/led/feedback"
         }
       },
-      "insert_timestamp": 1781787591.7467284
+      "insert_timestamp": 1781793654.477768
     }
   ],
-  "services": []
+  "services": [
+    {
+      "id": "smart-home-actuator-service",
+      "description": "Servizio REST che espone il controllo degli attuatori della smart home (termostato, luci, tapparelle)",
+      "endpoint": "0.0.0.0:9091/actuators",
+      "resources": [
+        "thermostat",
+        "lights",
+        "blinds"
+      ],
+      "insert_timestamp": 1781793707.808981
+    }
+  ]
 }
