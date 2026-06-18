@@ -71,14 +71,10 @@ class MQTTSubscriber:
 
             service_class = self.log_service.__class__
             
-            # Assegnazione ID e incremento (usando le variabili condivise della classe)
-            body = {"id": service_class.id, **body}
-            service_class.id += 1
-            
-            # Aggiunta del log ricevuto tramite MQTT nella lista centrale
-            self.log_service.AddLog(body)
-            print(f"[MQTT] Nuovo log salvato con successo! (ID: {body['id']})")
-            
+            assigned_id = self.log_service.thread_lock(body)
+            print(f"[MQTT] Nuovo log salvato con successo! (ID: {assigned_id})")
+
+
         except json.JSONDecodeError:
             print("[MQTT] Attenzione: Ricevuto un payload non in formato JSON valido")
         except Exception as e:

@@ -156,6 +156,7 @@ class ActuatorPublisher:
             self.client.publish(topic, stringa_json)
             print(f"[MQTT] Comando pubblicato con successo sul topic: {topic}")
             print(f"[MQTT] Payload: {stringa_json}")
+            self.send_log(payload_comando)
         except Exception as e:
             print(f"[MQTT - ERRORE] Impossibile pubblicare il messaggio: {e}")
 
@@ -305,6 +306,36 @@ class ActuatorPublisher:
         except Exception as e:
             print(f"[REST - ERRORE] Impossibile contattare il servizio a {endpoint}: {e}")
             return None
+
+    # TODO Modificare l'invio di logs tramite MQTT
+    def send_log(self, payload):
+        """Compone un pacchetto in formato SenML e lo invia a un server di log.
+        Ritorna True se l'invio ha successo, False altrimenti."""
+        
+        url_log="http://127.0.0.1:9092/log/"
+        timestamp = time.time()
+        
+        # Aggiunta del timestamp al log
+        payload["t"] = timestamp
+
+        # Invio tramite POST
+        try:
+            # json=payload converte automaticamente il dizionario in stringa JSON e imposta l'header
+            resp = requests.post( url_log, json=payload, headers={"Content-Type": "application/json"}, timeout=5 )
+            
+            # Controllo se il server ha risposto con successo (200 OK o 201 Created)
+            if resp.status_code in (200, 201):
+                print(f"[LOG SUCCESS] Inviato log correttamente")
+                return True
+            else:
+                print(f"[LOG ERROR] Fallito invio log. Status code: {resp.status_code}")
+                return False
+
+        except requests.exceptions.RequestException as e:
+            # Cattura problemi di rete, timeout o server irraggiungibile
+            print(f"[LOG EXCEPTION] Impossibile contattare il server di log: {e}")
+            return False
+
 
 
     def start(self):

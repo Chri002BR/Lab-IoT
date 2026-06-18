@@ -57,20 +57,16 @@ class SmartHomeLogService(object):
             else:
                 body["bt"] = timestamp
 
-            self.thread_lock(body)
-            
-            body = {"id": SmartHomeLogService.id, **body}
-            SmartHomeLogService.id += 1
-            
-            self.AddLog(body)
-            return json.dumps({"status": "success", "log_id": SmartHomeLogService.id - 1}).encode("utf-8")
+            assigned_id = self.thread_lock(body)
+            return json.dumps({"status": "success", "log_id": assigned_id}).encode("utf-8")
     
     def thread_lock(self, body): #Serve a rendere thread-safe l'incremento dell'id e l'aggiunta del log alla lista dei log
         with self._lock:
-                body = {"id": self.log_id_counter, **body}
-                assigned_id = self.log_id_counter      
-                self.log_id_counter += 1                 
-                self.AddLog(body)
+            body = {"id": self.log_id_counter, **body}
+            assigned_id = self.log_id_counter      
+            self.log_id_counter += 1                 
+            self.AddLog(body)
+            return assigned_id
 
     ## Funzione per ottenere tutti i log, con la possibilità di filtrare per stanza e per timestamp
     def GET(self, *uri, **params): 
@@ -146,7 +142,7 @@ class SmartHomeLogService(object):
         return response
     
     def __init__(self): #AGGIUNTO SU RICHIESTA ES06
-        self.cont_log = 0
+        self.log_id_counter = 0
         self.logs = [] #clear lista log
         self._lock = threading.Lock() #gestione thread della lista log, per non creare sovrapposizioni
         self.started=True
