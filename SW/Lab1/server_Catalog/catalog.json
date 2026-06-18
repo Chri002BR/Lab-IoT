@@ -11,6 +11,10 @@
         "led",
         "temperature"
       ],
+<<<<<<< HEAD
+      "insert_timestamp": 1781804043.1339798
+    },
+=======
       "mqtt": {
         "ip": "broker.hivemq.com",
         "port": 1883,
@@ -24,6 +28,7 @@
     }
   ],
   "services": [
+>>>>>>> 021119496e015cad1ab6e9622876eb1f7e68721d
     {
       "id": "smart-home-actuator-service",
       "description": "Servizio REST che espone il controllo degli attuatori della smart home (termostato, luci, tapparelle)",
@@ -33,6 +38,9 @@
         "lights",
         "blinds"
       ],
+<<<<<<< HEAD
+      "insert_timestamp": 1781804038.905034
+=======
       "insert_timestamp": 1781800980.503167
     },
     {
@@ -40,6 +48,7 @@
       "description": "MQTT Actuator Command Publisher Node",
       "resources": [],
       "insert_timestamp": 1781801005.2316005
+>>>>>>> 021119496e015cad1ab6e9622876eb1f7e68721d
     }
   ]
 }

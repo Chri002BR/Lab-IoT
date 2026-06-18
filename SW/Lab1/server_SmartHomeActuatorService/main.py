@@ -21,7 +21,7 @@ if __name__ == '__main__':
     cherrypy.tree.mount(SmartHomeActuatorService(), '/actuators/', conf)
 
     # Carico il file contenente le config per il server
-    uri_path = Path(__file__) / "config-uri-server.json"
+    uri_path = Path(__file__).parent / "config-uri-server.json"
     try:
         with open(uri_path, "r") as f:
             config = json.load(f)
