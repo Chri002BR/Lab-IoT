@@ -12,16 +12,7 @@
         "log",
         "storage"
       ],
-      "mqtt": {
-        "ip": "broker.hivemq.com",
-        "port": 1883,
-        "topic": {
-          "temp_topic": "/tiot/group14/temperature",
-          "command_topic": "/tiot/group14/led",
-          "feedback_topic": "/tiot/group14/led/feedback"
-        }
-      },
-      "insert_timestamp": 1781793714.5067847
+      "insert_timestamp": 1781804043.1339798
     },
     {
       "id": "smart-home-actuator-service",
@@ -32,7 +23,7 @@
         "lights",
         "blinds"
       ],
-      "insert_timestamp": 1781793707.808981
+      "insert_timestamp": 1781804038.905034
     }
   ]
 }
