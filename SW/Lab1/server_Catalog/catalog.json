@@ -11,24 +11,19 @@
         "led",
         "temperature"
       ],
-<<<<<<< HEAD
-      "insert_timestamp": 1781804043.1339798
-    },
-=======
       "mqtt": {
         "ip": "broker.hivemq.com",
         "port": 1883,
         "topic": {
-          "temp_topic": "/tiot/group14/temperature",
+          "sensor_topic": "/tiot/group14/temperature",
           "command_topic": "/tiot/group14/led",
           "feedback_topic": "/tiot/group14/led/feedback"
         }
       },
-      "insert_timestamp": 1781800982.9235072
+      "insert_timestamp": 1781811657.3532555
     }
   ],
   "services": [
->>>>>>> 021119496e015cad1ab6e9622876eb1f7e68721d
     {
       "id": "smart-home-actuator-service",
       "description": "Servizio REST che espone il controllo degli attuatori della smart home (termostato, luci, tapparelle)",
@@ -38,17 +33,7 @@
         "lights",
         "blinds"
       ],
-<<<<<<< HEAD
-      "insert_timestamp": 1781804038.905034
-=======
-      "insert_timestamp": 1781800980.503167
-    },
-    {
-      "id": "MQTT_Command_Publisher_Team14",
-      "description": "MQTT Actuator Command Publisher Node",
-      "resources": [],
-      "insert_timestamp": 1781801005.2316005
->>>>>>> 021119496e015cad1ab6e9622876eb1f7e68721d
+      "insert_timestamp": 1781811669.1824832
     }
   ]
 }

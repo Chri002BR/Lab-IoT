@@ -2,6 +2,7 @@ import paho.mqtt.client as mqtt
 import json
 import time
 import requests
+from pathlib import Path
 
 CATALOG_REST_URL = "http://localhost:9093"
 GROUP_ID = "group14"
@@ -21,14 +22,45 @@ class SmartHomeController:
 
         self.temperature_history={}
         self.current_motion={}
+        self.dispositivi_scoperti={}
+
+        # Leggo l'uri del catalog dal file di config
+        uri_path = Path(__file__).parent / "config-uri-server.json"
+        
+        # Recupero l'URL del catalogo dal file di configurazione, con fallback al default se non trovato
+        try:
+            with open(uri_path, "r") as f:
+                config = json.load(f)
+            self.CATALOG_REST_URL = config.get("uri_catalog", "http://localhost:9093/catalog")
+            print(f"Catalog URL: {self.CATALOG_REST_URL}")
+        except Exception: #se non trova su config, usa il default:
+            self.CATALOG_REST_URL = "http://localhost:9093/catalog"
+            print(f"Impossibile leggere {uri_path}, uso default {self.CATALOG_REST_URL}")
 
     def connect(self, client, userdata, flags, code, properties=None):
 
         if code==0:
-
             print(f"Connected")
-            sensor_topic_filter = f"tiot/{GROUP_ID}/+/sensor/+"
-            self.Client.subscribe(sensor_topic_filter)
+
+            # Iscrizione ai topic dei dispositivi scoperti
+            try:
+                url = f"{self.CATALOG_REST_URL}/devices"
+                response = requests.get(url, timeout=5)
+            
+                if response.status_code == 200:
+                    dispositivi = response.json() 
+                    self.dispositivi_scoperti.clear()
+                    for dev in dispositivi:
+                        # Adattamento per la struttura del tuo catalogo: i topic sono dentro l'oggetto "mqtt"
+                        mqtt_info = dev.get("mqtt", {})
+                        if "sensor_topic" in mqtt_info["topic"]:
+                            self.client.subscribe(mqtt_info["sensor_topic"])
+                        print(f"[CATALOGO] Iscritto a {mqtt_info['sensor_topic']}")
+                else:
+                    print(f"[REST] Errore di risposta dal catalogo: {response.status_code}")
+                
+            except Exception as e:
+                print(f"[REST] Errore di connessione al catalogo: {e}")
 
         else: 
 
