@@ -4,20 +4,17 @@ import time
 import threading
 import requests
 from pathlib import Path
-#TODO: NON è IMPLEMENTATO IL REQUISITO DELL'ESERCIZIO 6, IL LOGGER NON SI CONNETTE AL CATALOG!!!!!!!!!!!!!!!!!!!!!!!!!
 
+# Configurazione Broker MQTT e Costanti
+BROKER_MQTT = "broker.hivemq.com"
+PORTA_MQTT = 1883
+ID_SERVIZIO = "smart-home-event-log-service"
 
 class SmartHomeLogService(object):
-
-
-    ### INIZIALIZZAZIONE ###    
-
-
     exposed = True
 
 
     ### GESTIONE DELLE RICHIESTE REST ###
-
 
     ## Funzione per ricevere un log da un sensore o attuatore e aggiungerlo alla lista dei log
     def POST(self, *uri, **params):
@@ -145,8 +142,11 @@ class SmartHomeLogService(object):
         self.log_id_counter = 0
         self.logs = [] #clear lista log
         self._lock = threading.Lock() #gestione thread della lista log, per non creare sovrapposizioni
-        self.started=True
-        config_path = Path(__file__).parent.parent / "config-uri-client.json" #localizzo il file di configurazione del catalog
+
+
+        config_path = Path(__file__).parent.parent / "config-uri-client.json" 
+        self.service_endpoint = "/log"  # endpoint messo nel payload del catalog
+
 
         #Prendo dal file la configurazione, altrimenti imposto un valore di default
         try:
@@ -157,45 +157,50 @@ class SmartHomeLogService(object):
             self.CATALOG_BASE_URL = "http://localhost:9093/catalog"
 
         #Creo e avvio il thread per la registrazione e il mantenimento con il catalog
+        self.stop_event = threading.Event()
+        
         catalog_thread = threading.Thread(target=self.register_and_keep_alive, daemon=True)
         catalog_thread.start()
 
     def register_and_keep_alive(self):#AGGIUNTO SU RICHIESTA ES06
-        #REGISTRAZIONE
-        registration_data = {
-            "id": "smart-home-sensor-service",
-            "description": "Implementazione keep-alive per il catalog",
-            "resources": ["log", "storage"]
-        }
-
-        url_post = f"{self.CATALOG_BASE_URL}/services"
-        self.registered = False #per uscire dal ciclo quando si è registrato
-        t_new_tent = 5 #tempo in secondi tra un tentativo di registrazione e l'altro, se fallisce
-
-        while self.started and not self.registered:
+        """Gestisce la registrazione e il keep-alive del servizio nel Resource Catalog tramite REST."""
+       
+        while not self.stop_event.is_set():
+            payload = {
+                "id": "servizio_di_log",
+                "description": "Servizio di logging dei topic MQTT per letture dei sensori e i comandi degli attuatori.",
+                "endpoint": {
+                    "get_logs": f"{self.service_endpoint}",
+                    "post_log": f"{self.service_endpoint}",
+                    "delete_logs": f"{self.service_endpoint}?before={{timestamp}}"
+                },
+                "resources": 
+                    {
+                        "methods": ["GET", "POST", "DELETE"]
+                    },
+                "insert_timestamp": time.time()
+                }
+             
             try:
-                print("TENTATIVO REGISTRAZIONE AL CATALOG")
-                # Registrazione al catalog
-                response = requests.post(url_post, json=registration_data, timeout=t_new_tent)
+                url = f"{self.CATALOG_BASE_URL}/services" 
+                response = requests.post(url, json=payload, timeout=5)
+                
                 if response.status_code in [200, 201]:
-                    print("Registrazione effettuata")
+                    print("[REST] Registrazione/Keep-alive aggiornato sul Catalogo.")
                 else:
-                    print(f"Registrazionefallita [code: {response.status_code}]")
-
+                    print(f"[REST - WARNING] Il catalogo ha risposto con codice di stato: {response.status_code}")
             except Exception as e:
-                print(f"Errore di registrazione: {e}")
-
-            if not self.registered:
-                time.sleep(t_new_tent) #attendo  prima di effettuare un nuovo tentativo
-    
-        self.keep_alive()#richiamo il metodo di keep-alive dopo la registrazione per mantenerala
-
-    def keep_alive(self):
-        while self.started:
+                print(f"[REST - ERRORE] Impossibile inviare keep-alive a {self.CATALOG_BASE_URL}: {e}")
+            
+            # Attesa di 60 secondi prima del prossimo invio di keep-alive
             time.sleep(60)
-            if self.started:
-                try:
-                    print("Eseguo keep-alive")
-                    requests.put(f"{self.CATALOG_BASE_URL}/services/smart-home-sensor-service/keep-alive", timeout=5)
-                except Exception as e:
-                    print(f"Errore keep-alive: {e}")
+
+    # Funzioni per stoppare il thread che gestisce il catalog
+    def stop(self):
+            """Arresta in modo pulito il thread del catalogo."""
+            print("\n[SISTEMA] Arresto del thread di keep-alive in corso...")
+            self.stop_event.set() # Ferma il ciclo e sblocca la wait()
+            
+            if self.catalog_thread.is_alive():
+                self.catalog_thread.join(timeout=2)
+            print("[SISTEMA] Servizio arrestato correttamente.")
