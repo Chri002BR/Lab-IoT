@@ -20,4 +20,4 @@ Il file JSON deve contenere le seguenti chiavi, valorizzate appropriatamente:
 }
 ```
 
-Il server non utilizza il protovollo MQTT.
+Il server non utilizza il protocollo MQTT.
