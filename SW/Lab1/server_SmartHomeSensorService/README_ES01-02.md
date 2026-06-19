@@ -21,3 +21,8 @@ Il file JSON deve contenere le seguenti chiavi, valorizzate appropriatamente:
 ```
 
 Il server non utilizza il protocollo MQTT.
+
+Il server espone le seguenti risorse:
+- <ip_address>:9090/sensors?room=<room_name>&sens=<sens_name>
+- <ip_address>:9090/sensors/<room_name>
+- <ip_address>:9090/sensors/<room_name>/<sens_name>

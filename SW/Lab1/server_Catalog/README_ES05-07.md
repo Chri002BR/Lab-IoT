@@ -21,7 +21,7 @@ Il server non utilizza il protovollo MQTT.
 ## Formato accettato
 
 il catalog prevede di ricevere iscrizioni secondo questo formato:
-
+```json
 {
             "id": "sensor-01",
             "description": "Living room temperature sensor",
@@ -33,7 +33,7 @@ il catalog prevede di ricevere iscrizioni secondo questo formato:
                 },
             "resources": ["temperature", "humidity"]
           }
-
+```
 # Esercizio 07
 
 ## Note di Progettazione
