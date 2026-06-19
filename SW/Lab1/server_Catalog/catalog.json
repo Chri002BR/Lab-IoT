@@ -5,15 +5,22 @@
   },
   "devices": [
     {
-      "id": "Device MQTT (Es 8)",
-      "description": "IOT device",
-      "mqtt_info": {
-        "ip": "iot.eclipse.org",
+      "id": "ArduinoGroup14_arduino_temp",
+      "description": "Temperature reading and LED driving",
+      "resources": [
+        "led",
+        "temperature"
+      ],
+      "mqtt": {
+        "ip": "broker.hivemq.com",
         "port": 1883,
-        "topic": "/tiot/group14/device/Device MQTT (Es 8)/data"
+        "topic": {
+          "sensor_topic": "/tiot/group14/temperature",
+          "command_topic": "/tiot/group14/led",
+          "feedback_topic": "/tiot/group14/led/feedback"
+        }
       },
-      "resources": [],
-      "insert_timestamp": 1781878414.9329903
+      "insert_timestamp": 1781893238.8627925
     }
   ],
   "services": [
@@ -26,7 +33,7 @@
         "lights",
         "blinds"
       ],
-      "insert_timestamp": 1781878393.1984344
+      "insert_timestamp": 1781893218.4430265
     },
     {
       "id": "servizio_di_log",
@@ -43,7 +50,13 @@
           "DELETE"
         ]
       },
-      "insert_timestamp": 1781878411.7035496
+      "insert_timestamp": 1781893202.8438976
+    },
+    {
+      "id": "MQTT_Command_Publisher_Team14",
+      "description": "MQTT Actuator Command Publisher Node",
+      "resources": [],
+      "insert_timestamp": 1781893220.548375
     }
   ]
 }
