@@ -14,7 +14,7 @@ Il file JSON deve contenere la seguente chiave, valorizzata appropriatamente:
 {
   "uri_catalog": "http://localhost:9093/catalog"
 }
-
+```
 
 ## Note di Progettazione 
 
