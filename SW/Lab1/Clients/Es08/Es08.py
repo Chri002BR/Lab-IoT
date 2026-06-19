@@ -6,9 +6,7 @@ import paho.mqtt.client as mqtt
 AUTO_REGISTRATION_LOOP_TIME = 60
 
 GROUP_ID = "group14" 
-#device to simulate in this terminal
 DEVICE_ID = "Device_MQTT_(Es 8)"
-#topics at line 25
 
 class  DeviceMQTTClient(object):
 
@@ -127,6 +125,7 @@ class  DeviceMQTTClient(object):
         self.client.publish(self.query_topic, json.dumps(body))
 
 if __name__ == '__main__':
+#device to simulate in this terminal
 
     #description and resources
     

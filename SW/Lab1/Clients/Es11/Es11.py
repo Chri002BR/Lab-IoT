@@ -5,7 +5,7 @@ import requests
 import paho.mqtt.client as mqtt
 from pathlib import Path
 
-#TODO: modificare i commenti di gemini
+
 
 # Configurazione Broker MQTT
 BROKER_MQTT = "broker.hivemq.com"  
@@ -107,7 +107,7 @@ class ActuatorPublisher:
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if reason_code == 0:
             print(f"[MQTT] Connesso con successo al Broker: {BROKER_MQTT}")
-            #TODO: si vede che è scritto da gemini
+            
             for dev_id, info in self.dispositivi_scoperti.items():
                 if "feedback_topic" in info:
                     feedback_t = info["feedback_topic"]
