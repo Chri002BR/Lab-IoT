@@ -5,35 +5,47 @@
   },
   "devices": [
     {
-      "id": "ArduinoGroup14_arduino_temp",
-      "description": "Temperature reading and LED driving",
+      "id": "Device MQTT (Es 8)",
+      "description": "IOT device",
+      "mqtt_info": {
+        "ip": "iot.eclipse.org",
+        "port": 1883,
+        "topic": "/tiot/group14/device/Device MQTT (Es 8)/data"
+      },
+      "resources": [],
+      "insert_timestamp": 1781881955.6986077
+    },
+    {
+      "id": "fake-temperature-sensor",
+      "description": "Finto sensore di movimento per il test",
       "resources": [
-        "led",
-        "temperature"
+        "motion"
       ],
       "mqtt": {
         "ip": "broker.hivemq.com",
         "port": 1883,
         "topic": {
-          "sensor_topic": "/tiot/group14/temperature",
-          "command_topic": "/tiot/group14/led",
-          "feedback_topic": "/tiot/group14/led/feedback"
+          "sensor_topic": "/tiot/group14/sensor_topic",
+          "command_topic": "/tiot/group14/command_topic"
         }
       },
-      "insert_timestamp": 1781811657.3532555
+      "insert_timestamp": 1781881894.9697356
     }
   ],
   "services": [
     {
-      "id": "smart-home-actuator-service",
-      "description": "Servizio REST che espone il controllo degli attuatori della smart home (termostato, luci, tapparelle)",
-      "endpoint": "0.0.0.0:9091/actuators",
+      "id": "smart_home_controller",
+      "description": "Central Smart Home Controller for Rules and Stats",
       "resources": [
-        "thermostat",
-        "lights",
-        "blinds"
+        "temperature_controller",
+        "statistics"
       ],
-      "insert_timestamp": 1781811669.1824832
+      "mqtt": {
+        "ip": "broker.hivemq.com",
+        "port": 1883,
+        "base_topic": "/tiot/group14"
+      },
+      "insert_timestamp": 1781881924.533384
     }
   ]
 }
