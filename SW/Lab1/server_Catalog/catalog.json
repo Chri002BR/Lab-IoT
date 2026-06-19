@@ -5,76 +5,23 @@
   },
   "devices": [
     {
-      "id": "Device MQTT (Es 8)",
-      "description": "IOT device",
-      "mqtt_info": {
-        "ip": "iot.eclipse.org",
-<<<<<<< HEAD
-        "port": 1883,
-        "topic": "/tiot/group14/device/Device MQTT (Es 8)/data"
-      },
-      "resources": [],
-      "insert_timestamp": 1781881955.6986077
-    },
-    {
-      "id": "fake-temperature-sensor",
-      "description": "Finto sensore di movimento per il test",
+      "id": "ArduinoGroup14_arduino_temp",
+      "description": "Temperature reading and LED driving",
       "resources": [
-        "motion"
+        "led",
+        "temperature"
       ],
       "mqtt": {
         "ip": "broker.hivemq.com",
         "port": 1883,
         "topic": {
-          "sensor_topic": "/tiot/group14/sensor_topic",
-          "command_topic": "/tiot/group14/command_topic"
+          "sensor_topic": "/tiot/group14/temperature",
+          "command_topic": "/tiot/group14/led",
+          "feedback_topic": "/tiot/group14/led/feedback"
         }
       },
-      "insert_timestamp": 1781881894.9697356
-=======
-        "port": 1883,
-        "topic": "/tiot/group14/device/Device MQTT (Es 8)/data"
-      },
-      "resources": [],
-      "insert_timestamp": 1781878414.9329903
->>>>>>> ef02ebd6779948fbf2004b61d3f3926e753f1c7d
+      "insert_timestamp": 1781893417.993118
     }
   ],
-  "services": [
-    {
-      "id": "smart_home_controller",
-      "description": "Central Smart Home Controller for Rules and Stats",
-      "resources": [
-        "temperature_controller",
-        "statistics"
-      ],
-<<<<<<< HEAD
-      "mqtt": {
-        "ip": "broker.hivemq.com",
-        "port": 1883,
-        "base_topic": "/tiot/group14"
-      },
-      "insert_timestamp": 1781881924.533384
-=======
-      "insert_timestamp": 1781878393.1984344
-    },
-    {
-      "id": "servizio_di_log",
-      "description": "Servizio di logging dei topic MQTT per letture dei sensori e i comandi degli attuatori.",
-      "endpoint": {
-        "get_logs": "/log",
-        "post_log": "/log",
-        "delete_logs": "/log?before={timestamp}"
-      },
-      "resources": {
-        "methods": [
-          "GET",
-          "POST",
-          "DELETE"
-        ]
-      },
-      "insert_timestamp": 1781878411.7035496
->>>>>>> ef02ebd6779948fbf2004b61d3f3926e753f1c7d
-    }
-  ]
+  "services": []
 }

@@ -1,8 +1,5 @@
 import requests
 
-#TODO gestire in modo alternativo libreria requests se necessario
-#TODO: VENGONO GESTITE LE RICONNESSIONI ???????????? NON DOVREBBERO ESSERE GESTITE QUI INVECE CHE NEI VARI CLIENE E SERVER????????????????????
-
 class CatalogClient:
 
     ## Costruttore che accetta l'indirizzo del Catalog Server

@@ -7,8 +7,6 @@ import threading
 import requests
 from SW.Lab1.CatalogClient import CatalogClient
 
-#TODO mettere il json con IP anche per il catalog
-#TODO modificare da CLAUDE e rivedere commenti
 
 class SmartHomeActuatorService(object):
 

@@ -42,9 +42,6 @@ class SmartHomeLogService(object):
             if len(body["e"]) != 1:
                 raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
             
-            # if len(body["e"][0]) != 3:
-            #     raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
-            
             if "n" not in body["e"][0] or "v" not in body["e"][0] or "u" not in body["e"][0]:
                 raise cherrypy.HTTPError(422, "Bad request: Unprocessable Entity")
             

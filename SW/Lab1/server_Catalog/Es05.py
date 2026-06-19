@@ -2,9 +2,6 @@ import paho.mqtt.client as mqtt
 import threading, time, json, cherrypy, os
 import SW.Lab1.server_Catalog.Es07 as Es07
 
-#TODO: Da rivedere punto 3 campi opzionali degli endpoint e MQTT (ip,...) (non dovrebbero essere gestiti da qui, ma solo salvati nel Json)
-# PERCHE' NO ???????????????? NO NBASTA RENDERE PIù STRINGENTE IL CONTROLLO DEL BODY?????????????????
-#TODO: modificare da AI (COMMENTI, OUTPUT, IL CODICE E' DIFFICILMENTE LEGGIBILE)
 
     # Catalogo di default
 DEFAULT_CATALOG = {
@@ -232,7 +229,7 @@ class Catalog(object):
         print(f"[PUT] Refreshed {section[:-1]} '{item_id}'")
         return self._json_response({"status": "refreshed", "id": item_id})
  
-    ##   ## Funzione che gestisce le richieste DELETE. Rimuove un device o service esistente
+    ##  Funzione che gestisce le richieste DELETE. Rimuove un device o service esistente
     def DELETE(self, *uri, **params):
         if len(uri) < 2:
             raise cherrypy.HTTPError(400, f"error: Use /catalog/devices/<id> or /catalog/services/<id>")

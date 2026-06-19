@@ -7,8 +7,6 @@ import threading
 from SW.Lab1.CatalogClient import CatalogClient
 from pathlib import Path
 
-#TODO controllare
-
 class SmartHomeSensorService(object):
 
 

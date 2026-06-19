@@ -5,7 +5,7 @@ import requests
 import paho.mqtt.client as mqtt
 from pathlib import Path
 
-#TODO: modificare i commenti di gemini
+
 
 # Configurazione Broker MQTT
 BROKER_MQTT = "broker.hivemq.com"  
@@ -107,7 +107,7 @@ class ActuatorPublisher:
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if reason_code == 0:
             print(f"[MQTT] Connesso con successo al Broker: {BROKER_MQTT}")
-            #TODO: si vede che è scritto da gemini
+            
             for dev_id, info in self.dispositivi_scoperti.items():
                 if "feedback_topic" in info:
                     feedback_t = info["feedback_topic"]
@@ -135,15 +135,21 @@ class ActuatorPublisher:
 
         # 2. Costruisco il payload. 
         # Trasformo "ON"/"OFF" in un booleano (True/False)
-        value = (valore == "ON")
-        
+        # value = (valore == "ON")
+        # if (value == "on"):
+        #     value = 1
+        # elif (value == "off"):
+        #     value = 0
+        value = 1 if valore == "ON" else 0
+
         # Struttura in stile SenML
         payload_comando = {
             "bn" : "ArduinoGroup14",
             "e": [
                 {
                     "n": "led",
-                    "v": value
+                    "v": value,
+                    "u": "bool"
                 }
             ]
         }
@@ -173,8 +179,30 @@ class ActuatorPublisher:
         if not endpoint.startswith("http"):
             endpoint = "http://" + endpoint
  
-        stanza = input("Inserisci la stanza (living_room / kitchen / bedroom): ").strip()
-        sensore = input("Inserisci l'attuatore (thermostat / lights / blinds): ").strip()
+        # stanza = input("Inserisci la stanza (living_room / kitchen / bedroom): ").strip()
+        print("\n--- Selezione Stanza ---\/\n" \
+        " 1. living_room\n" \
+        " 2. kitchen\n" \
+        " 3. bedroom")
+        scelta_stanza = input("Inserisci il numero della stanza (1/2/3): ").strip()
+        mappa_stanze = {"1": "living_room", "2": "kitchen", "3": "bedroom"}
+        if scelta_stanza not in mappa_stanze:
+            print("[ERRORE] Selezione della stanza non valida.")
+            return
+        stanza = mappa_stanze[scelta_stanza]
+
+        print("\n Selezione Attuatore:\n" \
+        "  1. thermostat\n" \
+        "  2. lights\n" \
+        "  3. blinds")
+        scelta_attuatore = input("Inserisci il numero dell'attuatore (1/2/3): ").strip()
+        
+        mappa_attuatori = {"1": "thermostat", "2": "lights", "3": "blinds"}
+        if scelta_attuatore not in mappa_attuatori:
+            print("[ERRORE] Selezione dell'attuatore non valida.")
+            return
+        sensore = mappa_attuatori[scelta_attuatore]
+        # sensore = input("Inserisci l'attuatore (thermostat / lights / blinds): ").strip()
  
         if sensore == "thermostat":
             valore_raw = input("Nuova temperatura desiderata (10-30): ").strip()
@@ -227,9 +255,8 @@ class ActuatorPublisher:
 
 
     def interfaccia_utente(self):
-        # time.sleep(1) # Da togliere ??
+        time.sleep(1) # Per evitare problemi nel print dell'interfaccia
         while self.running:
-            #TODO: cos'è??????
             print("\n" + "="*45)
             if not self.dispositivi_scoperti:
                 print(" NESSUN DISPOSITIVO RILEVATO DAL CATALOGO.")
@@ -266,10 +293,8 @@ class ActuatorPublisher:
                 if tipo_dev in ["led", "luce"]:
                     valore = input("Inserisci comando (ON / OFF): ").strip().upper()
                     self.invia_comando(dev_selezionato, valore)
-                    # time.sleep(1)  # Non so se utile
                 elif tipo_dev == "servizio":
                     self.gestisci_servizio_rest(dev_selezionato)
-                    # time.sleep(1) # Non so se utile
                     continue
                 else:
                     raise ValueError("Tipo di dispositivo non riconosciuto per il comando.")
@@ -297,8 +322,8 @@ class ActuatorPublisher:
                 stato = response.json()
                 # Salvataggio nella struttura interna
                 info["stato"] = stato
-                print(f"[REST] Stato attuale ricevuto da '{dev_id}':")
-                print(json.dumps(stato, indent=2))
+                # print(f"[REST] Stato attuale ricevuto da '{dev_id}':")
+                # print(json.dumps(stato, indent=2))
                 return stato
             else:
                 print(f"[REST] Errore nella richiesta GET a {endpoint}: status code {response.status_code}")
@@ -307,7 +332,6 @@ class ActuatorPublisher:
             print(f"[REST - ERRORE] Impossibile contattare il servizio a {endpoint}: {e}")
             return None
 
-    # TODO Modificare l'invio di logs tramite MQTT
     def send_log(self, payload):
         """Compone un pacchetto in formato SenML e lo invia a un server di log.
         Ritorna True se l'invio ha successo, False altrimenti."""

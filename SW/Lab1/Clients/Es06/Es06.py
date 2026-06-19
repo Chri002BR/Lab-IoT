@@ -3,7 +3,7 @@ import sys
 import json
 
 # Aggiungo il percorso del progetto alla variabile di ambiente per poter importare il CatalogClient
-root_path = Path(__file__).resolve().parents[4]
+root_path = Path(__file__).resolve().parents
 sys.path.append(str(root_path))
 
 from SW.Lab1.CatalogClient import CatalogClient
