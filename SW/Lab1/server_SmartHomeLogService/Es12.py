@@ -1,81 +1,155 @@
-import cherrypy
 import json
 import time
-import paho.mqtt.client as PahoMQTT
+import threading
+import requests
+import paho.mqtt.client as mqtt
+from pathlib import Path
 
-#TODO: dare un occhiata a gestione versione mqtt, tolta gestione in es09
-#TODO: da rivedere chiedere chi lo ha fatto, se mio è solo generato e non testato
-#TODO NON DOVREBBE BASARSI SULL'ES04 SENZA RIFARE TUTTO DA CAPO ??????????????????
+# Configurazione Broker MQTT e Costanti
+BROKER_MQTT = "broker.hivemq.com"
+PORTA_MQTT = 1883
+ID_SERVIZIO = "smart-home-event-log-service"
 
-# --- NUOVA CLASSE SUBSCRIBER MQTT INTEGRATA PER L'ESERCIZIO 12 ---
-class MQTTSubscriber:
-    def __init__(self, clientID, broker, port, topic, log_service):
-        self.clientID = clientID
-        self.broker = broker
-        self.port = port
-        self.topic = topic
-        self.log_service = log_service  # Riferimento all'istanza del servizio web
-        
-        # Configurazione conforme a Paho-MQTT v2.0+
-        self._paho_mqtt = PahoMQTT.Client(PahoMQTT.CallbackAPIVersion.VERSION2, client_id=clientID)
-        self._paho_mqtt.on_connect = self.on_connect
-        self._paho_mqtt.on_message = self.on_message
 
-    def start(self):
+class MQTT_log_service:
+    def __init__(self):
+        # Inizializzazione del client MQTT (versione 2)
+        self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2, client_id=ID_SERVIZIO)
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message
+        self.stop_event = threading.Event()
+
+        # Set per tracciare i topic a cui siamo già iscritti
+        self.subscribed_topics = set()
+
+        # Lettura dell'URL del catalogo dal file di configurazione
+        uri_path = Path(__file__).parent / "config-uri-client.json"
         try:
-            self._paho_mqtt.connect(self.broker, self.port, keepalive=60)
-            self._paho_mqtt.loop_start()  # Avvia il loop MQTT in un thread in background
-            self._paho_mqtt.subscribe(self.topic, 2)
-            print(f"MQTT Subscriber avviato. In ascolto sul topic: {self.topic}")
-        except Exception as e:
-            print(f"Impossibile avviare il subscriber MQTT: {e}")
+            with open(uri_path, "r") as f:
+                config = json.load(f)
+            self.CATALOG_BASE_URL = config.get("uri_catalog", "http://localhost:9093/catalog")
+            self.URL_LOG_SERVICE = config.get("uri_log_REST", "http://127.0.0.1:9092/log")
+        except FileNotFoundError:
+            self.CATALOG_BASE_URL = "http://localhost:9093/catalog"
+            self.URL_LOG_SERVICE = "http://127.0.0.1:9092/log"
 
-    def stop(self):
-        self._paho_mqtt.unsubscribe(self.topic)
-        self._paho_mqtt.loop_stop()
-        self._paho_mqtt.disconnect()
-        print("MQTT Subscriber arrestato correttamente.")
+        # Avvio del thread per l'aggiornamento periodico dei topic
+        self.update_thread = threading.Thread(target=self.periodic_topic_update, daemon=True)
+        self.update_thread.start()
+
+        print("[SISTEMA] Avvio del servizio MQTT in corso...")
+        self.client.connect(BROKER_MQTT, PORTA_MQTT, 60)
+        self.client.loop_start()
 
     def on_connect(self, client, userdata, flags, reason_code, properties):
+        """Callback eseguita al momento della connessione al broker MQTT."""
         if reason_code == 0:
-            print(f"Connesso con successo al broker MQTT: {self.broker}")
+            print(f"\n[MQTT] Connesso con successo al broker {BROKER_MQTT}.")
+            # Effettua l'iscrizione ai topic nel catalog
+            self.fetch_and_subscribe_topics()
         else:
-            print(f"Connessione MQTT fallita con codice d'errore: {reason_code}")
+            print(f"\n[MQTT - ERRORE] Connessione fallita. Codice: {reason_code}")
 
     def on_message(self, client, userdata, msg):
-        print(f"[MQTT] Messaggio ricevuto sul topic '{msg.topic}'")
+        """Callback eseguita alla ricezione di un messaggio sui topic sottoscritti."""
         try:
-            raw = msg.payload.decode('utf-8')
-            body = json.loads(raw)
+            payload_str = msg.payload.decode("utf-8")
+            print(f"\n[LOG] Ricevuto messaggio MQTT su {msg.topic}: {payload_str}")
             
-            # Stessi identici controlli di validazione SenML presenti nel metodo POST
-            if "bn" not in body or "e" not in body:
-                print("[MQTT] Errore: Validazione SenML fallita (Manca bn o e)")
+            # 1. Parso la stringa per assicurarmi che sia un JSON valido
+            try:
+                payload_json = json.loads(payload_str)
+            except json.JSONDecodeError:
+                print("[LOG - ERRORE] Il messaggio non è un JSON valido. Impossibile inoltrare a Es04.")
                 return
-            if not isinstance(body["e"], list) or len(body["e"]) != 1:
-                print("[MQTT] Errore: Validazione SenML fallita ('e' deve essere una lista con 1 elemento)")
-                return
-            if len(body["e"][0]) != 3:
-                print("[MQTT] Errore: Validazione SenML fallita (L'elemento interno a 'e' deve avere 3 campi)")
-                return
-            if "n" not in body["e"][0] or "v" not in body["e"][0] or "u" not in body["e"][0]:
-                print("[MQTT] Errore: Validazione SenML fallita (Mancano n, v o u)")
-                return
-            
-            # Gestione del parametro temporale 'bt' (identica alla POST)
-            timestamp = time.time()
-            if "bt" not in body:
-                body = {"bt": timestamp, **body}
-            else:
-                body["bt"] = timestamp
 
-            service_class = self.log_service.__class__
-            
-            assigned_id = self.log_service.thread_lock(body)
-            print(f"[MQTT] Nuovo log salvato con successo! (ID: {assigned_id})")
+            # 2. Inoltro il pacchetto JSON tramite POST a Es04.py
+            try:
+                response = requests.post(self.URL_LOG_SERVICE, json=payload_json, timeout=5)
+                
+                if response.status_code == 200:
+                    resp_data = response.json()
+                    print(f"[REST] Log inoltrato e salvato correttamente (ID assegnato: {resp_data.get('log_id')})")
+                else:
+                    print(f"[REST - WARNING] Errore dal server Es04. Codice: {response.status_code}")
+                    print(f"       Dettaglio: {response.text}")
+                    
+            except requests.exceptions.RequestException as req_err:
+                print(f"[REST - ERRORE] Impossibile contattare il servizio di Log (Es04) all'indirizzo {self.URL_LOG_SERVICE}: {req_err}")
 
-
-        except json.JSONDecodeError:
-            print("[MQTT] Attenzione: Ricevuto un payload non in formato JSON valido")
         except Exception as e:
-            print(f"[MQTT] Errore imprevisto durante l'elaborazione: {e}")
+            print(f"[LOG - ERRORE] Errore imprevisto durante l'elaborazione: {e}")
+
+    # Funzione per prendere i topic dal catalog alla quale iscriversi       
+    def fetch_and_subscribe_topics(self):
+        """Interroga il catalogo per ottenere i dispositivi e si iscrive ai nuovi topic."""
+        try:
+            # Faccio una GET al catalogo. 
+            # (Se il tuo catalogo richiede di specificare l'endpoint, ad es. '/devices', aggiungilo all'URL)
+            response = requests.get(self.CATALOG_BASE_URL, timeout=5)
+            
+            if response.status_code == 200:
+                catalog_data = response.json()
+                
+                # Estraiamo la lista dei dispositivi
+                devices = catalog_data.get("devices", [])
+                
+                # Raccogliamo tutti i sensor_topic trovati in questo momento
+                current_catalog_topics = set()
+                
+                for device in devices:
+                    # Estraiamo la lista (o il dizionario) dei dispositivi
+                    devices = catalog_data.get("devices", [])
+                    
+                    # Se il catalogo restituisce un dizionario invece di una lista, prendiamo solo i valori
+                    if isinstance(devices, dict):
+                        devices = devices.values()
+                    
+                    # Raccogliamo tutti i sensor_topic trovati in questo momento
+                    current_catalog_topics = set()
+                    
+                    for device in devices:
+                        # Controllo di sicurezza: ignoriamo l'elemento se non è un dizionario (es. se è una stringa)
+                        if not isinstance(device, dict):
+                            continue
+
+                    # Navighiamo in modo sicuro il dizionario (evita crash se mancano campi)
+                    mqtt_info = device.get("mqtt", {})
+                    topic_info = mqtt_info.get("topic", {})
+                    sensor_topic = topic_info.get("sensor_topic")
+                    
+                    if sensor_topic:
+                        current_catalog_topics.add(sensor_topic)
+                
+                # Controlliamo quali topic sono nuovi rispetto a quelli già iscritti
+                new_topics = current_catalog_topics - self.subscribed_topics
+                
+                for topic in new_topics:
+                    self.client.subscribe(topic)
+                    self.subscribed_topics.add(topic)
+                    print(f"[MQTT] Nuova sottoscrizione effettuata dinamicamente al topic: {topic}")
+            else:
+                print(f"[CATALOG - WARNING] Errore durante il recupero dei topic. Codice: {response.status_code}")
+                
+        except requests.exceptions.RequestException as req_err:
+            print(f"[CATALOG - ERRORE] Impossibile contattare il catalogo all'indirizzo {self.CATALOG_BASE_URL}: {req_err}")
+        except Exception as e:
+            print(f"[CATALOG - ERRORE] Errore imprevisto durante l'estrazione dei topic: {e}")
+
+    # Aggiornamento periodico dei topic dal catalog
+    def periodic_topic_update(self):
+        """Thread in background che aggiorna i topic ogni 60 secondi."""
+        while not self.stop_event.is_set():
+            # Aspetta 60 secondi prima di ri-controllare (si sblocca subito se viene chiamato stop())
+            self.stop_event.wait(60)
+            if not self.stop_event.is_set():
+                self.fetch_and_subscribe_topics()
+
+
+
+    def stop(self):
+        """Arresta in modo pulito il servizio."""
+        print("\n[SISTEMA] Arresto del servizio in corso...")
+        self.stop_event.set()
+        self.client.loop_stop()
+        self.client.disconnect()
