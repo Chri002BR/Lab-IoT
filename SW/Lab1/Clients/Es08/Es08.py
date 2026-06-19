@@ -7,7 +7,7 @@ AUTO_REGISTRATION_LOOP_TIME = 60
 
 GROUP_ID = "group14" 
 #device to simulate in this terminal
-DEVICE_ID = "device1"
+DEVICE_ID = "Device_MQTT_(Es 8)"
 #topics at line 25
 
 class  DeviceMQTTClient(object):
@@ -24,10 +24,10 @@ class  DeviceMQTTClient(object):
         self.thread_flag=True
 
         #topic definition
-        self.registration_topic = f"tiot/{self.group_id}/catalog/register"
-        self.ack_topic = f"tiot/{self.group_id}/catalog/register/response/{self.client_id}"
-        self.query_topic = f"tiot/{self.group_id}/catalog/query"
-        self.response_topic = f"tiot/{self.group_id}/device/{self.client_id}/response"
+        self.registration_topic = f"/tiot/{self.group_id}/catalog/register"
+        self.ack_topic = f"/tiot/{self.group_id}/catalog/register/response/{self.client_id}"
+        self.query_topic = f"/tiot/{self.group_id}/catalog/query"
+        self.response_topic = f"/tiot/{self.group_id}/device/{self.client_id}/response"
 
         self.client = mqtt.Client(client_id=self.client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 
@@ -62,7 +62,7 @@ class  DeviceMQTTClient(object):
             "mqtt_info": {
                 "ip": "iot.eclipse.org",
                 "port": 1883,
-                "topic": f"tiot/{self.group_id}/device/{self.client_id}/data"
+                "topic": f"/tiot/{self.group_id}/device/{self.client_id}/data"
             },
             "resources": self.resources
         }
@@ -95,14 +95,16 @@ class  DeviceMQTTClient(object):
 
 
         if msg.topic==self.ack_topic:
-
             print("\nAck received")
 
         else:
-
             body=json.loads(msg.payload.decode("utf-8"))
             print(f"\nMessage received on {msg.topic}")
+            if not body: 
+                print("Nessun dispositivo trovato")
+
             print(json.dumps(body))
+            
 
     #queryies
     def get_all_devices(self):
@@ -135,13 +137,14 @@ if __name__ == '__main__':
 
     #menu
     while True:
+        time.sleep(1)   # Per sistemare degli errori nel print del menu
         print(f"\nDevice: {DEVICE_ID}" \
-        "\n1) registration" \
-        "\n2) query all" \
-        "\n3) query by id" \
-        "\n4) quit")
+        "\n1) Registrazione manuale del device nel catalog" \
+        "\n2) Lista di tutti i dispositivi sul catalog" \
+        "\n3) Informazioni su un device" \
+        "\n4) Quit")
 
-        operation=input("\nChoose an operation(1-4)").strip()
+        operation=input("\nChoose an operation(1-4): ").strip()
 
         if operation=="1":
 

@@ -42,5 +42,6 @@ if __name__ == '__main__':
 
     cherrypy.config.update({'server.socket_host': indirizzo})
     cherrypy.config.update({'server.socket_port': int(porta)})
+    cherrypy.engine.subscribe('stop', log_service_instance_MQTT.stop)
     cherrypy.engine.start()
     cherrypy.engine.block()
