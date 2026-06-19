@@ -35,3 +35,5 @@ import time
 import requests
 import threading
 ```
+
+Di queste, sono da installare manualmente `cherrypy`, `paho.mqtt.client` e `requests`
