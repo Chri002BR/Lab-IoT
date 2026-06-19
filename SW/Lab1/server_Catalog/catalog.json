@@ -20,43 +20,8 @@
           "feedback_topic": "/tiot/group14/led/feedback"
         }
       },
-      "insert_timestamp": 1781893238.8627925
+      "insert_timestamp": 1781893417.993118
     }
   ],
-  "services": [
-    {
-      "id": "smart-home-actuator-service",
-      "description": "Servizio REST che espone il controllo degli attuatori della smart home (termostato, luci, tapparelle)",
-      "endpoint": "0.0.0.0:9091/actuators",
-      "resources": [
-        "thermostat",
-        "lights",
-        "blinds"
-      ],
-      "insert_timestamp": 1781893218.4430265
-    },
-    {
-      "id": "servizio_di_log",
-      "description": "Servizio di logging dei topic MQTT per letture dei sensori e i comandi degli attuatori.",
-      "endpoint": {
-        "get_logs": "/log",
-        "post_log": "/log",
-        "delete_logs": "/log?before={timestamp}"
-      },
-      "resources": {
-        "methods": [
-          "GET",
-          "POST",
-          "DELETE"
-        ]
-      },
-      "insert_timestamp": 1781893202.8438976
-    },
-    {
-      "id": "MQTT_Command_Publisher_Team14",
-      "description": "MQTT Actuator Command Publisher Node",
-      "resources": [],
-      "insert_timestamp": 1781893220.548375
-    }
-  ]
+  "services": []
 }
